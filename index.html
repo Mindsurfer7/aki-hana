@@ -110,7 +110,7 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
       <button class="ctl" id="btnPrev" type="button" aria-label="Предыдущая сцена">←</button>
       <button class="ctl" id="btnNext" type="button" aria-label="Следующая сцена">→</button>
       <button class="ctl wide" id="btnText" type="button">Текст</button>
-      <button class="ctl" id="btnSound" type="button" aria-label="Все фоновые звуки" title="Все фоновые звуки (M)">♪</button>
+      <button class="ctl" id="btnSound" type="button" aria-label="Все фоновые звуки" title="Все фоновые звуки (M)">Звук</button>
       <button class="ctl" id="btnMusic" type="button" aria-label="Музыка" title="Музыка (B)">♫</button>
       <button class="ctl" id="btnAmb" type="button" aria-label="Звуки природы" title="Звуки природы (N)">≋</button>
       <button class="ctl" id="btnAuto" type="button" aria-label="Автопоказ" title="Автопоказ (A)">Авто</button>
@@ -3858,7 +3858,7 @@ const AUDIO = (() => {
     if (!ac) return;
     const M = MOODS[mood] || MOODS.calm, sc = SCALES[M.scale], now = ac.currentTime;
     while (sched < now + 0.4) {
-      if (Math.random() < M.density) {
+      if (musicOn && Math.random() < M.density) {
         deg = clamp(deg + [-2, -1, -1, 0, 1, 1, 2][Math.floor(Math.random() * 7)], 0, 13);
         const m = M.root - 12 + 12 * Math.floor(deg / 5) + sc[deg % 5];
         const pan = (Math.random() - 0.5) * 0.6;
@@ -3866,8 +3866,8 @@ const AUDIO = (() => {
         note(m, sched, 0.35 + Math.random() * 0.25, pan);
         if (Math.random() < 0.16) note(m - 12, sched + 0.01, 0.22, -pan);
       }
-      if (Math.random() < M.birds) chirp(sched + Math.random() * 0.5);
-      if (crick > 0.05 && Math.random() < 0.55) cricket(sched + Math.random() * 0.4, Math.random() < 0.5 ? 4300 : 3700);
+      if (ambientOn && Math.random() < M.birds) chirp(sched + Math.random() * 0.5);
+      if (ambientOn && crick > 0.05 && Math.random() < 0.55) cricket(sched + Math.random() * 0.4, Math.random() < 0.5 ? 4300 : 3700);
       sched += M.step * (Math.random() < 0.18 ? 2 : 1);
     }
     // gentle wind wander
@@ -4233,7 +4233,10 @@ function frame(now) {
       // A missing/stalled voice file must not block the story forever.
       if (cur.t >= duration && (!VOICE.busy || cur.t >= duration + 12)) next();
     }
-    if (!trans && !DBG.on && (++PRE.tick % 3 === 0 || !started)) prewarmStep(started ? 6 : 14);
+    if (!trans && !DBG.on && (++PRE.tick % 3 === 0 || !started)) {
+      const spareMs = FRAME_MS - (performance.now() - t0) - 5;
+      if (spareMs > 8) prewarmStep(Math.min(spareMs, started ? 4 : 12));
+    }
   }
   HUD.tick(now);
   perfSample(performance.now() - t0);
