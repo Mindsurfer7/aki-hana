@@ -260,9 +260,20 @@
     const r = e.r || (e.k === 'brush' ? 100 : 110), rand = random(e.s || 2);
     if (e.k === 'brush') {
       const w = e.w || 3200, h = e.h || 180;
+      // Original brush bands grow UP from y=0, never down into the next layer.
+      c.beginPath(); c.moveTo(-w / 2, 0);
+      for (let i = 0; i <= 18; i++) {
+        const px = -w / 2 + i * w / 18;
+        c.lineTo(px, -h * (0.26 + 0.06 * Math.sin(i * 1.1 + e.s)));
+      }
+      c.lineTo(w / 2, 0); c.closePath();
+      c.fillStyle = gradient(c, 0, -h * 0.48, 0, 0,
+        [[0, 'rgba(139,157,106,.65)'], [1, '#6f8465']]);
+      c.fill();
       for (let i = 0; i < 25; i++) {
-        const px = -w / 2 + w * (i + 0.4) / 25, py = h * 0.28 + Math.sin(i * 0.8) * 12;
-        foliage(c, px, py, w / 25 * 0.8, h * 0.25,
+        const px = -w / 2 + w * (i + 0.4) / 25;
+        const py = -h * 0.25 + Math.sin(i * 0.8) * h * 0.06;
+        foliage(c, px, py, w / 25 * 0.8, h * 0.24,
           i % 4 ? P.moss : P.gold, i * 11 + (e.s || 1));
       }
     } else {
@@ -301,7 +312,7 @@
     if (e.k === 'canopy') return [e.o && e.o.w || 3200, (e.o && e.o.h || 900) + 120,
       (e.o && e.o.w || 3200) / 2, e.o && e.o.h || 900];
     if (e.k === 'ground') return [e.w || 3200, (e.h || 400) + 30, (e.w || 3200) / 2, 0];
-    if (e.k === 'brush') return [e.w || 3200, (e.h || 180) + 160, (e.w || 3200) / 2, 100];
+    if (e.k === 'brush') return [e.w || 3200, (e.h || 180) + 25, (e.w || 3200) / 2, e.h || 180];
     if (e.k === 'rock') return [(e.r || 100) * 2.5, (e.r || 100) * 1.8,
       (e.r || 100) * 1.25, (e.r || 100) * 1.7];
     if (e.k === 'fern' || e.k === 'sasa') return [(e.r || 140) * 2.6,
