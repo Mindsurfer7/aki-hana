@@ -86,7 +86,7 @@ async function run() {
       await nap(700); // source page renders two deterministic frozen frames
       const win = iframe.contentWindow;
       const before = capture(win);
-      await addScript(win, './environment-art.js');
+      await addScript(win, new URL('environment-art.js', document.baseURI).href);
       // The production entry point is left untouched. Re-initialise ONLY this test
       // instance after opting into the new art and force one frozen redraw.
       const timings = win.eval('(function(){' +
