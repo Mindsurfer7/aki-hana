@@ -116,13 +116,19 @@
       ctx.moveTo(3.5, -10.4 - warmth);
       ctx.bezierCurveTo(6.5, -12.4 - warmth, 10.6, -12 - concern, 14.9, -9.2 + concern * 1.3);
       ctx.stroke();
-      ctx.fillStyle = 'rgba(255,226,181,0.27)';
-      ctx.beginPath(); ctx.ellipse(-7.4, 4.4, 6.1, 3.4, -0.25, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = 'rgba(253,238,209,0.64)';
-      ctx.lineWidth = 1.15;
+      // A softly feathered warm cheek, not a hard circular blush stamp.
+      const cheek = ctx.createRadialGradient(-7.4, 4.4, 0.3, -7.4, 4.4, 8);
+      cheek.addColorStop(0, 'rgba(255,224,181,0.28)');
+      cheek.addColorStop(0.55, 'rgba(255,219,170,0.14)');
+      cheek.addColorStop(1, 'rgba(255,219,170,0)');
+      ctx.fillStyle = cheek;
+      ctx.beginPath(); ctx.ellipse(-7.4, 4.4, 7.6, 4.4, -0.25, 0, Math.PI * 2); ctx.fill();
+      // Small cream-fur tips stay within the cheek silhouette.
+      ctx.strokeStyle = 'rgba(250,232,206,0.37)';
+      ctx.lineWidth = 0.7;
       ctx.beginPath();
-      ctx.moveTo(-17, 7); ctx.bezierCurveTo(-19.5, 8.5, -20, 11.8, -16, 12.8);
-      ctx.moveTo(-15, 10); ctx.bezierCurveTo(-18, 12.6, -16.5, 15.3, -12, 15.5);
+      ctx.moveTo(-14.5, 7); ctx.quadraticCurveTo(-16, 8.6, -14, 10);
+      ctx.moveTo(-12.8, 8); ctx.quadraticCurveTo(-14.3, 10.3, -11.7, 11);
       ctx.stroke();
       if (id === 'talk' || id === 'decide') {
         ctx.fillStyle = 'rgba(255,251,229,0.68)';
