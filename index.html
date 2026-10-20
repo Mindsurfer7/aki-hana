@@ -77,6 +77,15 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
 .ctl:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 #toast { position: absolute; top: max(22px, env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); background: var(--smoke); padding: 8px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity .4s; }
 #toast.show { opacity: 1; }
+#soundPanel { position: fixed; right: 16px; bottom: 58px; width: min(350px, calc(100vw - 32px)); box-sizing: border-box; padding: 22px; background: rgba(20,15,11,.97); border: 1px solid #64503b; border-radius: 16px; pointer-events: auto; z-index: 20; box-shadow: 0 12px 48px #0008; }
+#soundPanel h3 { margin: 0; font: italic 28px var(--f-display); }
+#soundPanel p { color: var(--paper-dim); font-size: 13px; line-height: 1.5; }
+.soundHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.soundRow { margin: 20px 0; }
+.soundRow label { display: flex; align-items: center; gap: 8px; }
+.soundRow output { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--gold); }
+.soundRow input[type=range] { width: 100%; margin: 12px 0 0; accent-color: var(--gold); cursor: pointer; }
+#hud:focus-within #bar { opacity: 1; }
 #help { position: fixed; inset: 0; pointer-events: auto; display: grid; place-items: center; background: rgba(8,6,4,0.72); }
 #help .panel { background: rgba(20,15,11,0.92); border: 1px solid rgba(241,231,214,0.18); border-radius: 12px; padding: 26px 30px; max-width: 520px; width: calc(100% - 32px); }
 #help h3 { margin: 0 0 12px; font-family: var(--f-display); font-style: italic; font-weight: 500; font-size: 30px; }
@@ -85,7 +94,7 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
 #help dd { margin: 0; color: var(--paper-dim); }
 @media (max-width: 640px) {
   #chRu { font-size: 18px; } #chJp { font-size: 22px; }
-  .ctl.wide, #btnSound, #btnHelp { display: none; }
+  .ctl.wide, #btnHelp { display: none; }
   #progress { display: none; }
   #count { display: inline; min-width: 42px; font-size: 14px; }
   #bar { gap: 4px; justify-content: space-between; }
@@ -110,7 +119,7 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
       <button class="ctl" id="btnPrev" type="button" aria-label="Предыдущая сцена">←</button>
       <button class="ctl" id="btnNext" type="button" aria-label="Следующая сцена">→</button>
       <button class="ctl wide" id="btnText" type="button">Текст</button>
-      <button class="ctl" id="btnSound" type="button" aria-label="Все фоновые звуки" title="Все фоновые звуки (M)">Звук</button>
+      <button class="ctl" id="btnSound" type="button" aria-expanded="false" aria-controls="soundPanel">Звук ⚙</button>
       <button class="ctl" id="btnMusic" type="button" aria-label="Музыка" title="Музыка (B)">♫</button>
       <button class="ctl" id="btnAmb" type="button" aria-label="Звуки природы" title="Звуки природы (N)">≋</button>
       <button class="ctl" id="btnAuto" type="button" aria-label="Автопоказ" title="Автопоказ (A)">Авто</button>
@@ -119,6 +128,15 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
     </div>
   </div>
 </div>
+
+<section id="soundPanel" hidden role="dialog" aria-labelledby="soundTitle">
+  <div class="soundHead"><h3 id="soundTitle">Настройки звука</h3><button class="ctl" id="soundClose" type="button" aria-label="Закрыть настройки звука">×</button></div>
+  <p>Настройте баланс под себя. Галочка включает канал, ползунок меняет громкость.</p>
+  <div class="soundRow"><label><input type="checkbox" id="voiceEnabled">Голоса героев и рассказчика<output id="voiceValue" for="voiceVolume"></output></label><input type="range" id="voiceVolume" min="0" max="100" step="1" aria-label="Голоса героев и рассказчика: громкость"></div>
+  <div class="soundRow"><label><input type="checkbox" id="musicEnabled">Музыка<output id="musicValue" for="musicVolume"></output></label><input type="range" id="musicVolume" min="0" max="100" step="1" aria-label="Музыка: громкость"></div>
+  <div class="soundRow"><label><input type="checkbox" id="natureEnabled">Звуки природы<output id="natureValue" for="natureVolume"></output></label><input type="range" id="natureVolume" min="0" max="100" step="1" aria-label="Звуки природы: громкость"></div>
+  <button class="ctl" id="soundReset" type="button">Сбросить настройки</button>
+</section>
 
 <div class="wrap" id="help" hidden>
   <div class="panel" role="dialog" aria-label="Управление">
@@ -3776,8 +3794,21 @@ scene({
    AUDIO — generated in the browser: wind, brook, crickets, koto plucks.
    Kept quiet on purpose: someone is reading the story aloud over it.
    ===================================================================== */
+const SOUND = (() => {
+  const defaults = { voice: 100, music: 35, nature: 30, voiceEnabled: true, musicEnabled: true, natureEnabled: true };
+  const values = { ...defaults };
+  try {
+    const saved = JSON.parse(localStorage.getItem('aki-hana.sound.v1') || '{}');
+    for (const key of Object.keys(defaults)) {
+      if (typeof defaults[key] === 'boolean' && typeof saved?.[key] === 'boolean') values[key] = saved[key];
+      else if (typeof defaults[key] === 'number' && Number.isFinite(saved?.[key])) values[key] = Math.max(0, Math.min(100, saved[key]));
+    }
+  } catch (_) { /* Playback also works when browser storage is unavailable. */ }
+  return { values, defaults, gain: key => values[key + 'Enabled'] ? values[key] / 100 : 0,
+    save() { try { localStorage.setItem('aki-hana.sound.v1', JSON.stringify(values)); } catch (_) {} } };
+})();
 const AUDIO = (() => {
-  let ac = null, master, music, musicBus, amb, on = true, musicOn = true, ambientOn = true, ready = false;
+  let ac = null, master, music, amb, musicBus, natureBus, ready = false;
   let windG, windF, streamG, streamG2, crickG, droneG, birdOn = 0, crick = 0;
   let mood = 'calm', sched = 0, deg = 6, timer = null, windTarget = 0.2, lastWindSet = 0;
   const PL = new Map();
@@ -3864,7 +3895,7 @@ const AUDIO = (() => {
     if (!ac) return;
     const M = MOODS[mood] || MOODS.calm, sc = SCALES[M.scale], now = ac.currentTime;
     while (sched < now + 0.4) {
-      if (musicOn && Math.random() < M.density) {
+      if (SOUND.gain('music') > 0 && Math.random() < M.density) {
         deg = clamp(deg + [-2, -1, -1, 0, 1, 1, 2][Math.floor(Math.random() * 7)], 0, 13);
         const m = M.root - 12 + 12 * Math.floor(deg / 5) + sc[deg % 5];
         const pan = (Math.random() - 0.5) * 0.6;
@@ -3872,8 +3903,8 @@ const AUDIO = (() => {
         note(m, sched, 0.35 + Math.random() * 0.25, pan);
         if (Math.random() < 0.16) note(m - 12, sched + 0.01, 0.22, -pan);
       }
-      if (ambientOn && Math.random() < M.birds) chirp(sched + Math.random() * 0.5);
-      if (ambientOn && crick > 0.05 && Math.random() < 0.55) cricket(sched + Math.random() * 0.4, Math.random() < 0.5 ? 4300 : 3700);
+      if (SOUND.gain('nature') > 0 && Math.random() < M.birds) chirp(sched + Math.random() * 0.5);
+      if (SOUND.gain('nature') > 0 && crick > 0.05 && Math.random() < 0.55) cricket(sched + Math.random() * 0.4, Math.random() < 0.5 ? 4300 : 3700);
       sched += M.step * (Math.random() < 0.18 ? 2 : 1);
     }
     // gentle wind wander
@@ -3888,14 +3919,14 @@ const AUDIO = (() => {
     if (ac) return;
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
     master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination);
-    master.gain.setValueAtTime(0, ac.currentTime); master.gain.linearRampToValueAtTime(on ? 0.8 : 0, ac.currentTime + 3);
+    master.gain.setValueAtTime(0, ac.currentTime); master.gain.linearRampToValueAtTime(0.8, ac.currentTime + 3);
     const rev = ac.createConvolver(); rev.buffer = impulse(3.4, 2.6);
-    const rg = ac.createGain(); rg.gain.value = 0.42; rev.connect(rg); rg.connect(master);
-    music = ac.createGain(); music.gain.value = 0.3;
-    musicBus = ac.createGain(); musicBus.gain.value = musicOn ? 1 : 0;
-    music.connect(musicBus); musicBus.connect(master); musicBus.connect(rev);
-    amb = ac.createGain(); amb.gain.value = ambientOn ? 0.55 : 0; amb.connect(master);
-    crickG = ac.createGain(); crickG.gain.value = 0; crickG.connect(amb); crickG.connect(rev);
+    musicBus = ac.createGain(); musicBus.gain.value = SOUND.gain('music'); musicBus.connect(master);
+    natureBus = ac.createGain(); natureBus.gain.value = SOUND.gain('nature'); natureBus.connect(master);
+    const rg = ac.createGain(); rg.gain.value = 0.42; rev.connect(rg); rg.connect(musicBus);
+    music = ac.createGain(); music.gain.value = 0.3; music.connect(musicBus); music.connect(rev);
+    amb = ac.createGain(); amb.gain.value = 0.55; amb.connect(natureBus);
+    crickG = ac.createGain(); crickG.gain.value = 0; crickG.connect(amb);
     const brown = noiseBuffer(6, true), white = noiseBuffer(4, false);
     const wN = loopNoise(brown, 'lowpass', 420, 0.7, 0.2); windG = wN.g; windF = wN.f;
     const s1 = loopNoise(white, 'bandpass', 2300, 0.9, 0); streamG = s1.g;
@@ -3919,29 +3950,23 @@ const AUDIO = (() => {
     streamG.gain.setTargetAtTime(M.stream * 0.12, t, 1.2);
     streamG2.gain.setTargetAtTime(M.stream * 0.35, t, 1.2);
     droneG.gain.setTargetAtTime(M.drone * 0.5, t, 2);
-    crick = M.crick; crickG.gain.setTargetAtTime(ambientOn ? M.crick : 0, t, 2);
+    crick = M.crick; crickG.gain.setTargetAtTime(M.crick, t, 2);
   }
   return {
     start,
     mood: (name) => setMood(name),
     wind: v => { windTarget = v; },
-    toggle() { on = !on; if (ac) master.gain.setTargetAtTime(on ? 0.8 : 0, ac.currentTime, 0.25); return on; },
-    toggleMusic() {
-      musicOn = !musicOn;
-      if (ac) musicBus.gain.setTargetAtTime(musicOn ? 1 : 0, ac.currentTime, 0.18);
-      return musicOn;
+    toggle() { const enabled = !(SOUND.values.musicEnabled || SOUND.values.natureEnabled); SOUND.values.musicEnabled = SOUND.values.natureEnabled = enabled; SOUND.save(); this.applyMix(); MIXER.sync(); return enabled; },
+    applyMix() {
+      if (!ac) return;
+      musicBus.gain.setTargetAtTime(SOUND.gain('music'), ac.currentTime, 0.04);
+      natureBus.gain.setTargetAtTime(SOUND.gain('nature'), ac.currentTime, 0.04);
     },
-    toggleAmbience() {
-      ambientOn = !ambientOn;
-      if (ac) {
-        amb.gain.setTargetAtTime(ambientOn ? 0.55 : 0, ac.currentTime, 0.18);
-        crickG.gain.setTargetAtTime(ambientOn ? crick : 0, ac.currentTime, 0.18);
-      }
-      return ambientOn;
-    },
-    get on() { return on; },
-    get musicOn() { return musicOn; },
-    get ambientOn() { return ambientOn; },
+    toggleMusic() { SOUND.values.musicEnabled = !SOUND.values.musicEnabled; SOUND.save(); this.applyMix(); MIXER.sync(); return SOUND.values.musicEnabled; },
+    toggleAmbience() { SOUND.values.natureEnabled = !SOUND.values.natureEnabled; SOUND.save(); this.applyMix(); MIXER.sync(); return SOUND.values.natureEnabled; },
+    get musicOn() { return SOUND.values.musicEnabled; },
+    get ambientOn() { return SOUND.values.natureEnabled; },
+    get on() { return SOUND.values.musicEnabled || SOUND.values.natureEnabled; },
   };
 })();
 
@@ -4020,16 +4045,17 @@ function go(i, dir = 1, opts = {}) {
 }
 /* ---------- narration (voice/NN.mp3, optional) ---------- */
 const VOICE = (() => {
-  let on = true, el = null, timer = 0;
+  let el = null, timer = 0;
   function stop() { clearTimeout(timer); if (el) { el.pause(); el.onended = null; } el = null; }
   function play(i, delay) {
-    stop(); if (!on || DBG.on) return;
-    const a = new Audio(`voice/${String(i).padStart(2, '0')}.mp3`); a.volume = 0.95; el = a;
+    stop(); if (DBG.on) return;
+    const a = new Audio(`voice/${String(i).padStart(2, '0')}.mp3`); a.volume = SOUND.gain('voice'); el = a;
     a.onerror = () => { if (el === a) el = null; };
     timer = setTimeout(() => { if (el !== a) return; a.play().catch(a.onerror); }, delay * 1000);
   }
-  function toggle() { on = !on; if (on) play(idx, 0.2); else stop(); return on; }
-  return { play, stop, toggle, get busy() { return !!el && !el.paused && !el.ended && !el.error; } };
+  function applyMix() { if (el) el.volume = SOUND.gain('voice'); }
+  function toggle() { SOUND.values.voiceEnabled = !SOUND.values.voiceEnabled; SOUND.save(); applyMix(); MIXER.sync(); return SOUND.values.voiceEnabled; }
+  return { play, stop, toggle, applyMix, get busy() { return !!el && !el.paused && !el.ended && !el.error; } };
 })();
 const next = () => { if (idx < SCENES.length - 1) go(idx + 1, 1); else HUD.flash('Конец сказки — ← чтобы вернуться'); };
 const prev = () => { if (idx > 0) go(idx - 1, -1); };
@@ -4282,10 +4308,35 @@ const HUD = (() => {
   return { scene, build, toggleText, flash, moved, tick, help, get textOn() { return textOn; } };
 })();
 
+const MIXER = (() => {
+  const panel = document.getElementById('soundPanel'), button = document.getElementById('btnSound');
+  function sync() {
+    for (const key of ['voice', 'music', 'nature']) {
+      document.getElementById(key + 'Enabled').checked = SOUND.values[key + 'Enabled'];
+      document.getElementById(key + 'Volume').value = SOUND.values[key];
+      document.getElementById(key + 'Value').textContent = SOUND.values[key] + '%';
+    }
+    syncControls();
+  }
+  function apply() { SOUND.save(); AUDIO.applyMix(); VOICE.applyMix(); sync(); }
+  function close() { panel.hidden = true; button.setAttribute('aria-expanded', 'false'); button.focus(); }
+  function toggle() {
+    panel.hidden = !panel.hidden; button.setAttribute('aria-expanded', String(!panel.hidden));
+    if (!panel.hidden) { HUD.moved(); document.getElementById('voiceVolume').focus(); } else button.focus();
+  }
+  for (const key of ['voice', 'music', 'nature']) {
+    document.getElementById(key + 'Volume').addEventListener('input', e => { SOUND.values[key] = Number(e.target.value); apply(); });
+    document.getElementById(key + 'Enabled').addEventListener('change', e => { SOUND.values[key + 'Enabled'] = e.target.checked; apply(); });
+  }
+  panel.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') close(); });
+  document.getElementById('soundClose').addEventListener('click', close);
+  document.getElementById('soundReset').addEventListener('click', () => { Object.assign(SOUND.values, SOUND.defaults); apply(); });
+  sync(); return { sync, toggle };
+})();
+
 /* ---------- input ---------- */
 function syncControls() {
   for (const [id, active, label, shortcut] of [
-    ['btnSound', AUDIO.on, 'Все фоновые звуки', 'M'],
     ['btnMusic', AUDIO.musicOn, 'Музыка', 'B'],
     ['btnAmb', AUDIO.ambientOn, 'Звуки природы', 'N'],
     ['btnAuto', auto, 'Автопоказ', 'A'],
@@ -4334,6 +4385,7 @@ function start(full) {
 window.addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const k = e.key;
+  if (e.target.closest?.('input, button, select, textarea')) return;
   if (!started) { if (k === 'Enter' || k === ' ') { e.preventDefault(); start(false); } return; }
   HUD.moved();
   if (['ArrowRight', ' ', 'PageDown', 'Enter', 'ArrowDown'].includes(k)) { e.preventDefault(); next(); }
@@ -4366,7 +4418,7 @@ document.getElementById('btnAutostart').addEventListener('click', () => { start(
 document.getElementById('btnPrev').addEventListener('click', e => { e.stopPropagation(); prev(); });
 document.getElementById('btnNext').addEventListener('click', e => { e.stopPropagation(); next(); });
 document.getElementById('btnText').addEventListener('click', e => { e.stopPropagation(); HUD.toggleText(); });
-document.getElementById('btnSound').addEventListener('click', e => { e.stopPropagation(); toggleAllAudio(); });
+document.getElementById('btnSound').addEventListener('click', e => { e.stopPropagation(); MIXER.toggle(); });
 document.getElementById('btnMusic').addEventListener('click', e => { e.stopPropagation(); toggleMusic(); });
 document.getElementById('btnAmb').addEventListener('click', e => { e.stopPropagation(); toggleAmbience(); });
 document.getElementById('btnAuto').addEventListener('click', e => { e.stopPropagation(); setAuto(!auto); });
