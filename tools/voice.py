@@ -1,10 +1,10 @@
-import json,os,re,sys,subprocess,urllib.request,concurrent.futures as cf
+import json,os,re,sys,subprocess,urllib.request,concurrent.futures as cf,hashlib,time
 OUT=sys.argv[1]; os.makedirs(OUT,exist_ok=True); TMP=os.path.join(OUT,'_seg'); os.makedirs(TMP,exist_ok=True)
 ENV='/Users/a1/Documents/Workspace/Flutter/clones/qonbaq-mono/qonbaq/.env'
 KEY=os.environ.get('FISHAUDIO_API_KEY') or re.search(r'^FISHAUDIO_API_KEY\s*=\s*["\']?([^"\'\s#]+)',open(ENV).read(),re.M).group(1)
 N=("2a1036d645634680b3cc69aeeb60375b","Тёплый добрый рассказчик детской сказки на ночь. Спокойно, мягко, неторопливо, с лёгкой улыбкой и уютными паузами — как бабушка у камина осенним вечером.")
-F=("a78c3bc7551e475da3abe0c408661d8c","Маленькая лисичка, девочка лет шести. Голос нежный, звонкий, немного застенчивый; эмоции искренние.")
-H=("9b427db1d4c94e30b88b6ac05989a358","Зайчик — бодрый, весёлый, дружелюбный, говорит быстро и с энтузиазмом.")
+F=("02f8eff6783c4fe59a849cc439f250e9","Взрослый женский мультяшный голос, выразительный и тёплый, без детского тембра.")
+H=("3866bdb5e1e24cdb94599b70a7f07a35","Взрослый мужской мультяшный голос, бодрый, озорной и дружелюбный, без детского тембра.")
 B=("40a5463e69a240918d9f9f47e822ffc2","Медвежонок — добрый, неторопливый, басовитый, но очень ласковый и заботливый.")
 S=[
 [(N,"Осенью, в одном японском лесу, на острове Хоккайдо...")],
@@ -30,20 +30,34 @@ S=[
 [(N,"Вскоре домик был готов. Лисичка с радостью посмотрела на свою работу."),(F,"Как хорошо, что мы сделали это вместе!"),(N,"— сказала она.")],
 [(N,"И с тех пор лисичка больше не думала, что она хуже других, если что-то не получается с первого раза. Она продолжала учиться новому, радовалась своим успехам и не стеснялась просить о помощи.")],
 ]
-jobs=[(i,j,v,ins,t) for i,sc in enumerate(S) for j,((v,ins),t) in enumerate(sc)]
+selected=set(map(int,sys.argv[2:])) if len(sys.argv)>2 else set(range(len(S)))
+jobs=[(i,j,v,ins,t) for i,sc in enumerate(S) if i in selected for j,((v,ins),t) in enumerate(sc)]
 def tts(job):
-  i,j,v,ins,t=job; p=f"{TMP}/{i:02d}_{j}.mp3"
-  if os.path.exists(p): return
-  r=urllib.request.Request("https://api.fish.audio/v1/tts",json.dumps({"text":t,"reference_id":v,"format":"mp3","mp3_bitrate":128,"normalize":True,"latency":"normal"}).encode(),{"Authorization":"Bearer "+KEY,"Content-Type":"application/json","model":"s1"})
+  i,j,v,ins,t=job
+  cue = ('[worried]' if i in (9,14) else '[curious]' if i == 17 else '[happy]' if i == 20 else '[determined]') if v == F[0] else '[happy]' if v == H[0] else ''
+  spoken = (cue + ' ' + t).strip()
+  # New character takes use content-addressed cache; retain existing narrator/bear takes.
+  suffix = '_' + hashlib.sha256((v+spoken+'s2.1-pro-free').encode()).hexdigest()[:12] if v in (F[0],H[0]) else ''
+  p=f"{TMP}/{i:02d}_{j}{suffix}.mp3"
+  paths[(i,j)]=p
+  if os.path.exists(p) and os.path.getsize(p)>0: return
+  r=urllib.request.Request("https://api.fish.audio/v1/tts",json.dumps({"text":spoken,"reference_id":v,"format":"mp3","mp3_bitrate":128,"normalize":True,"latency":"normal"}).encode(),{"Authorization":"Bearer "+KEY,"Content-Type":"application/json","model":"s2.1-pro-free"})
   for a in range(3):
-    try: open(p,"wb").write(urllib.request.urlopen(r,timeout=180).read()); return
-    except Exception as e: err=e
+    try:
+      with urllib.request.urlopen(r,timeout=180) as response: data=response.read()
+      if len(data)<1000: raise ValueError('Empty or invalid TTS audio')
+      with open(p+'.tmp','wb') as f: f.write(data)
+      os.replace(p+'.tmp',p)
+      print('Generated',i,j,flush=True); return
+    except Exception as e: err=e; time.sleep(2*(a+1))
   raise err
-with cf.ThreadPoolExecutor(4) as ex: list(ex.map(tts,jobs))
+paths={}
+with cf.ThreadPoolExecutor(2) as ex: list(ex.map(tts,jobs))
 for i,sc in enumerate(S):
+  if i not in selected: continue
   ins=[]; fl=[]
   for j in range(len(sc)):
-    ins+=['-i',f"{TMP}/{i:02d}_{j}.mp3"]; fl.append(f"[{j}:a]aresample=24000,apad=pad_dur=0.35[a{j}]")
+    ins+=['-i',paths[(i,j)]]; fl.append(f"[{j}:a]aresample=24000,apad=pad_dur=0.35[a{j}]")
   fc=';'.join(fl)+';'+''.join(f"[a{j}]" for j in range(len(sc)))+f"concat=n={len(sc)}:v=0:a=1[o]"
   subprocess.run(['ffmpeg','-loglevel','error','-y',*ins,'-filter_complex',fc,'-map','[o]','-ac','1','-c:a','libmp3lame','-b:a','64k',f"{OUT}/{i:02d}.mp3"],check=True)
-print('OK',len(S))
+print('OK',len(selected))
