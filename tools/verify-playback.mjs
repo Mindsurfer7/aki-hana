@@ -1,5 +1,6 @@
 // Dependency-free checks for the single-file Canvas presentation.
-// These are structural checks, not a replacement for a browser performance test.
+// Structural checks and syntax tests. Runtime audio should also be tested
+// in Safari and in-app browsers on real devices.
 import { readFileSync } from 'node:fs';
 import { Script } from 'node:vm';
 import test from 'node:test';
@@ -14,8 +15,8 @@ test('the presentation JavaScript parses', () => {
   assert.doesNotThrow(() => new Script(js, { filename: 'index.html' }));
 });
 
-test('auto/music/nature buttons are reachable from the UI', () => {
-  for (const id of ['btnAutostart', 'btnAuto', 'btnMusic', 'btnAmb']) {
+test('playback buttons have handlers', () => {
+  for (const id of ['btnAutostart', 'btnAuto', 'btnMusic', 'btnAmb', 'btnEnableAudio']) {
     assert.match(html, new RegExp('id="' + id + '"'));
     assert.match(js, new RegExp("getElementById\\('" + id + "'\\)\\.addEventListener"));
   }
@@ -23,10 +24,22 @@ test('auto/music/nature buttons are reachable from the UI', () => {
   assert.match(js, /setAttribute\('aria-pressed'/);
 });
 
-test('audio paths do not silence nature when music is muted', () => {
+test('the voice channel uses unlocked WebAudio, not delayed media autoplay', () => {
+  assert.match(js, /ac\.resume\(\)/);
+  assert.match(js, /const ctx = AUDIO\.context/);
+  assert.match(js, /ctx\.decodeAudioData\(await response\.arrayBuffer\(\)\)/);
+  assert.match(js, /ctx\.createBufferSource\(\)/);
+  assert.match(js, /window\.AKI_HANA_VOICE\?\.\[key\]/);
+  assert.doesNotMatch(js, /new Audio\(/);
+  assert.match(js, /AUDIO\.start\(\);\s*if \(full\) toggleFull\(\)/);
+  assert.match(js, /audioNotice/);
+});
+
+test('music, ambience and voices have independent volume paths', () => {
   assert.match(js, /music\.connect\(musicBus\)/);
-  assert.match(js, /musicBus\.connect\(rev\)/);
-  assert.match(js, /amb\.connect\(master\)/);
+  assert.match(js, /rg\.connect\(musicBus\)/);
+  assert.match(js, /amb\.connect\(natureBus\)/);
+  assert.match(js, /gainNode\.connect\(ctx\.destination\)/);
   assert.match(js, /toggleMusic\(\)/);
   assert.match(js, /toggleAmbience\(\)/);
 });
@@ -38,8 +51,9 @@ test('low-tier rendering avoids costly full-frame filters', () => {
   assert.match(js, /trans\.fromReady = true/);
 });
 
-test('auto-play reaches the next scene and respects the last scene', () => {
+test('auto-play waits for narration and respects the last scene', () => {
   assert.match(js, /auto && !trans && cur && idx < SCENES\.length - 1/);
-  assert.match(js, /cur\.t >= duration \+ 12/);
+  assert.match(js, /elapsed >= duration \+ 12/);
+  assert.match(js, /now - endedAt >= 650/);
   assert.match(js, /setAuto\(!auto\)/);
 });

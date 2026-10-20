@@ -77,6 +77,9 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
 .ctl:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 #toast { position: absolute; top: max(22px, env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); background: var(--smoke); padding: 8px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity .4s; }
 #toast.show { opacity: 1; }
+#audioNotice { position: fixed; z-index: 40; left: 50%; top: max(20px, env(safe-area-inset-top, 0px)); transform: translateX(-50%); width: min(520px, calc(100vw - 32px)); padding: 12px 16px; box-sizing: border-box; border: 1px solid var(--gold); background: rgba(20,15,11,.97); border-radius: 12px; pointer-events: auto; text-align: center; box-shadow: 0 6px 28px #000a; }
+#audioNotice p { margin: 0 0 10px; font-size: 14px; line-height: 1.4; }
+#audioNotice .ctl { min-height: 40px; }
 #soundPanel { position: fixed; right: 16px; bottom: 58px; width: min(350px, calc(100vw - 32px)); box-sizing: border-box; padding: 22px; background: rgba(20,15,11,.97); border: 1px solid #64503b; border-radius: 16px; pointer-events: auto; z-index: 20; box-shadow: 0 12px 48px #0008; }
 #soundPanel h3 { margin: 0; font: italic 28px var(--f-display); }
 #soundPanel p { color: var(--paper-dim); font-size: 13px; line-height: 1.5; }
@@ -127,6 +130,11 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
       <button class="ctl" id="btnHelp" type="button" aria-label="Подсказка">?</button>
     </div>
   </div>
+</div>
+
+<div id="audioNotice" hidden role="status">
+  <p id="audioNoticeText">Чтобы услышать сказку, включите звук.</p>
+  <button class="ctl" id="btnEnableAudio" type="button">🔊 Включить звук</button>
 </div>
 
 <section id="soundPanel" hidden role="dialog" aria-labelledby="soundTitle">
@@ -3807,6 +3815,14 @@ const SOUND = (() => {
   return { values, defaults, gain: key => values[key + 'Enabled'] ? values[key] / 100 : 0,
     save() { try { localStorage.setItem('aki-hana.sound.v1', JSON.stringify(values)); } catch (_) {} } };
 })();
+const AUDIO_NOTICE = (() => {
+  const panel = document.getElementById('audioNotice');
+  const label = document.getElementById('audioNoticeText');
+  return {
+    show(message) { label.textContent = message; panel.hidden = false; },
+    hide() { panel.hidden = true; },
+  };
+})();
 const AUDIO = (() => {
   let ac = null, master, music, amb, musicBus, natureBus, ready = false;
   let windG, windF, streamG, streamG2, crickG, droneG, birdOn = 0, crick = 0;
@@ -3915,9 +3931,32 @@ const AUDIO = (() => {
       windF.frequency.setTargetAtTime(280 + w * 900 + Math.random() * 120, now, 0.8);
     }
   }
+  function resume() {
+    if (!ac) return Promise.resolve(false);
+    if (ac.state === 'running') { AUDIO_NOTICE.hide(); return Promise.resolve(true); }
+    // AudioContext is often suspended on iOS and in messenger webviews.
+    // resume() must be invoked synchronously from the user's tap/key gesture.
+    try {
+      return ac.resume().then(() => {
+        const running = ac.state === 'running';
+        if (running) AUDIO_NOTICE.hide();
+        return running;
+      }).catch(() => { AUDIO_NOTICE.show('Браузер остановил звук. Нажмите «Включить звук».'); return false; });
+    } catch (_) {
+      AUDIO_NOTICE.show('Браузер остановил звук. Нажмите «Включить звук».');
+      return Promise.resolve(false);
+    }
+  }
   function start() {
-    if (ac) return;
-    try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+    if (ac) { resume(); return; }
+    try { ac = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (e) { AUDIO_NOTICE.show('Этот браузер не поддерживает воспроизведение фонового звука.'); return; }
+    ac.onstatechange = () => { if (ac.state === 'running') AUDIO_NOTICE.hide(); };
+    // Do this before any full-screen request consumes the user activation.
+    resume();
+    setTimeout(() => {
+      if (ac && ac.state !== 'running') AUDIO_NOTICE.show('Для воспроизведения звука нажмите кнопку ниже.');
+    }, 1000);
     master = ac.createGain(); master.gain.value = 0; master.connect(ac.destination);
     master.gain.setValueAtTime(0, ac.currentTime); master.gain.linearRampToValueAtTime(0.8, ac.currentTime + 3);
     const rev = ac.createConvolver(); rev.buffer = impulse(3.4, 2.6);
@@ -3954,6 +3993,8 @@ const AUDIO = (() => {
   }
   return {
     start,
+    resume,
+    get context() { return ac; },
     mood: (name) => setMood(name),
     wind: v => { windTarget = v; },
     toggle() { const enabled = !(SOUND.values.musicEnabled || SOUND.values.natureEnabled); SOUND.values.musicEnabled = SOUND.values.natureEnabled = enabled; SOUND.save(); this.applyMix(); MIXER.sync(); return enabled; },
@@ -4043,20 +4084,84 @@ function go(i, dir = 1, opts = {}) {
   AUDIO.mood(def.mood || 'calm', def);
   VOICE.play(i, opts.instant || !cur ? 0.6 : Math.min(dur, 1.6));
 }
-/* ---------- narration (voice/NN.mp3, optional) ---------- */
+/* ---------- narration: decoded MP3 through the unlocked WebAudio context ----------
+   Delayed HTMLAudioElement.play() was blocked by mobile autoplay rules.
+   The portable distribution embeds each MP3 as a data URI; hosted copies
+   load the same files from voice/NN.mp3 with no extra runtime dependencies. */
 const VOICE = (() => {
-  let el = null, timer = 0, endedAt = null;
-  function stop() { clearTimeout(timer); endedAt = null; if (el) { el.pause(); el.onended = null; } el = null; }
-  function play(i, delay) {
-    stop(); if (DBG.on) return;
-    const a = new Audio(`voice/${String(i).padStart(2, '0')}.mp3`); a.volume = SOUND.gain('voice'); el = a;
-    a.onended = () => { if (el === a) endedAt = performance.now(); };
-    a.onerror = () => { if (el === a) { el = null; endedAt = null; } };
-    timer = setTimeout(() => { if (el !== a) return; a.play().catch(a.onerror); }, delay * 1000);
+  let src = null, gainNode = null, endedAt = null, state = 'idle', serial = 0;
+  const cache = new Map();
+  function stop() {
+    serial++;
+    if (src) {
+      src.onended = null;
+      try { src.stop(); } catch (_) {}
+      src.disconnect();
+      src = null;
+    }
+    endedAt = null;
+    state = 'idle';
   }
-  function applyMix() { if (el) el.volume = SOUND.gain('voice'); }
+  async function play(i, delay) {
+    stop();
+    if (DBG.on) return;
+    const requestId = serial;
+    const requestedAt = performance.now();
+    const ctx = AUDIO.context;
+    if (!ctx) { state = 'error'; return; }
+    state = 'loading';
+    try {
+      const key = String(i).padStart(2, '0');
+      let buffer = cache.get(key);
+      if (!buffer) {
+        const url = window.AKI_HANA_VOICE?.[key] || `voice/${key}.mp3`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Voice ${key}: HTTP ${response.status}`);
+        buffer = await ctx.decodeAudioData(await response.arrayBuffer());
+        // Do not cache every story track on memory-constrained devices.
+        cache.clear();
+        cache.set(key, buffer);
+      }
+      if (requestId !== serial) return; // user has already changed scenes
+      if (!gainNode) { gainNode = ctx.createGain(); gainNode.connect(ctx.destination); }
+      gainNode.gain.value = SOUND.gain('voice');
+      const node = ctx.createBufferSource();
+      node.buffer = buffer;
+      node.connect(gainNode);
+      node.onended = () => {
+        if (src === node) {
+          src = null;
+          node.disconnect();
+          state = 'ended';
+          endedAt = performance.now();
+        }
+      };
+      src = node;
+      state = 'scheduled';
+      const wait = Math.max(0, delay - (performance.now() - requestedAt) / 1000);
+      node.start(ctx.currentTime + wait);
+      if (ctx.state !== 'running') {
+        AUDIO_NOTICE.show('Браузер приостановил звук. Нажмите «Включить звук».');
+      }
+    } catch (error) {
+      if (requestId !== serial) return;
+      state = 'error';
+      const local = location.protocol === 'file:' && !window.AKI_HANA_VOICE;
+      AUDIO_NOTICE.show(local
+        ? 'Для озвучки нужна папка voice рядом с index.html или единый файл полной сказки.'
+        : 'Озвучка не загрузилась. Проверьте подключение и нажмите «Включить звук».');
+      console.warn('Aki Hana: voice playback unavailable', error);
+    }
+  }
+  function applyMix() { if (gainNode) gainNode.gain.value = SOUND.gain('voice'); }
   function toggle() { SOUND.values.voiceEnabled = !SOUND.values.voiceEnabled; SOUND.save(); applyMix(); MIXER.sync(); return SOUND.values.voiceEnabled; }
-  return { play, stop, toggle, applyMix, get endedAt() { return endedAt; }, get busy() { return !!el && !el.paused && !el.ended && !el.error; } };
+  return {
+    play, stop, toggle, applyMix,
+    retry() { if (state === 'error') play(idx, 0); },
+    get endedAt() { return endedAt; },
+    get busy() { return state === 'loading' || state === 'scheduled' || state === 'playing'; },
+    get state() { return state; },
+  };
 })();
 const next = () => { if (idx < SCENES.length - 1) go(idx + 1, 1); else HUD.flash('Конец сказки — ← чтобы вернуться'); };
 const prev = () => { if (idx > 0) go(idx - 1, -1); };
@@ -4384,8 +4489,9 @@ function start(full) {
   started = true;
   document.getElementById('start').hidden = true;
   document.getElementById('hud').hidden = false;
-  if (full) toggleFull();
+  // Unlock audio first, while the start click is still a transient user gesture.
   AUDIO.start();
+  if (full) toggleFull();
   syncControls();
   DBG.frozen = false; cur = null; trans = null;
   go(0, 1);
@@ -4423,6 +4529,13 @@ window.addEventListener('resize', () => { resize(); if (DBG.on && DBG.frozen) { 
 document.getElementById('btnFull').addEventListener('click', () => start(true));
 document.getElementById('btnWin').addEventListener('click', () => start(false));
 document.getElementById('btnAutostart').addEventListener('click', () => { start(false); setAuto(true); });
+document.getElementById('btnEnableAudio').addEventListener('click', e => {
+  e.stopPropagation();
+  AUDIO.start();
+  AUDIO.resume().then(ok => { if (ok) VOICE.retry(); });
+});
+// Subsequent interactions can re-unlock AudioContext after app suspension.
+document.addEventListener('pointerdown', () => { if (started) AUDIO.resume(); }, { passive: true });
 document.getElementById('btnPrev').addEventListener('click', e => { e.stopPropagation(); prev(); });
 document.getElementById('btnNext').addEventListener('click', e => { e.stopPropagation(); next(); });
 document.getElementById('btnText').addEventListener('click', e => { e.stopPropagation(); HUD.toggleText(); });
