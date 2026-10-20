@@ -10,7 +10,7 @@ import { platform } from 'node:os';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dest = resolve(root, 'art/review-shots');
 const cases = [
-  { id: 'decide', title: 'Решение', number: 11, t: 12, x: 55, y: 55 },
+  { id: 'decide', title: 'Решение', number: 11, t: 3.1, x: 56, y: 55 },
   { id: 'wind', title: 'Ветер', number: 12, t: 4.5, x: 63, y: 54 },
   { id: 'offer', title: 'Зайчик предлагает помощь', number: 13, t: 9.5, x: 62, y: 54 },
   { id: 'tired', title: 'Лисичка устала', number: 14, t: 6, x: 55, y: 55 },
