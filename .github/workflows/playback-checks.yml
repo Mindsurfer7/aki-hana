@@ -18,11 +18,11 @@ jobs:
           python3 tools/build-portable.py --output dist/aki-hana-full.html
           python3 - <<'PY'
           from pathlib import Path
-          import re
           html = Path('dist/aki-hana-full.html').read_text(encoding='utf-8')
           assert html.count('data:audio/mpeg;base64,') == 22
           assert 'window.AKI_HANA_VOICE' in html
-          assert len(re.findall(r'"\\d\\d":"data:audio/mpeg;base64,', html)) == 22
+          for scene in range(22):
+              assert ('"' + f'{scene:02}' + '":"data:audio/mpeg;base64,') in html
           print('22 embedded narration files verified')
           PY
       - uses: actions/upload-artifact@v4
