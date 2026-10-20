@@ -4045,17 +4045,18 @@ function go(i, dir = 1, opts = {}) {
 }
 /* ---------- narration (voice/NN.mp3, optional) ---------- */
 const VOICE = (() => {
-  let el = null, timer = 0;
-  function stop() { clearTimeout(timer); if (el) { el.pause(); el.onended = null; } el = null; }
+  let el = null, timer = 0, endedAt = null;
+  function stop() { clearTimeout(timer); endedAt = null; if (el) { el.pause(); el.onended = null; } el = null; }
   function play(i, delay) {
     stop(); if (DBG.on) return;
     const a = new Audio(`voice/${String(i).padStart(2, '0')}.mp3`); a.volume = SOUND.gain('voice'); el = a;
-    a.onerror = () => { if (el === a) el = null; };
+    a.onended = () => { if (el === a) endedAt = performance.now(); };
+    a.onerror = () => { if (el === a) { el = null; endedAt = null; } };
     timer = setTimeout(() => { if (el !== a) return; a.play().catch(a.onerror); }, delay * 1000);
   }
   function applyMix() { if (el) el.volume = SOUND.gain('voice'); }
   function toggle() { SOUND.values.voiceEnabled = !SOUND.values.voiceEnabled; SOUND.save(); applyMix(); MIXER.sync(); return SOUND.values.voiceEnabled; }
-  return { play, stop, toggle, applyMix, get busy() { return !!el && !el.paused && !el.ended && !el.error; } };
+  return { play, stop, toggle, applyMix, get endedAt() { return endedAt; }, get busy() { return !!el && !el.paused && !el.ended && !el.error; } };
 })();
 const next = () => { if (idx < SCENES.length - 1) go(idx + 1, 1); else HUD.flash('Конец сказки — ← чтобы вернуться'); };
 const prev = () => { if (idx > 0) go(idx - 1, -1); };
@@ -4230,6 +4231,13 @@ function prewarmStep(ms) {
   if (BUDGET.miss === 0) { PRE.queue.shift(); PRE.inst = null; }
 }
 
+// Every scene follows the spoken line in autoplay.
+function shouldAdvanceScene(elapsed, duration, busy, endedAt, now) {
+  if (endedAt !== null) return now - endedAt >= 650;
+  // Missing or stalled audio retains the bounded visual-duration fallback.
+  return elapsed >= duration && (!busy || elapsed >= duration + 12);
+}
+
 /* ---------- main loop ---------- */
 let last = performance.now(), started = false, auto = false;
 const BA = () => buf('sceneA', CW, CH), BB = () => buf('sceneB', CW, CH);
@@ -4263,7 +4271,7 @@ function frame(now) {
     if (auto && !trans && cur && idx < SCENES.length - 1) {
       const duration = cur.def.dur || 15;
       // A missing/stalled voice file must not block the story forever.
-      if (cur.t >= duration && (!VOICE.busy || cur.t >= duration + 12)) next();
+      if (shouldAdvanceScene(cur.t, duration, VOICE.busy, VOICE.endedAt, now)) next();
     }
     if (!trans && !DBG.on && (++PRE.tick % 3 === 0 || !started)) {
       const spareMs = FRAME_MS - (performance.now() - t0) - 5;
