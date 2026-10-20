@@ -210,11 +210,18 @@
   }
   function makeFriendsGround(ctx, t) {
     const move = Math.max(0, t - 8.8) * 150;
-    const spots = [
-      [560 + (t < 4 ? lerp(-680, 0, ease(t / 4)) : move), 880, 92, '242,175,111'],
-      [760 + move, 880, 76, '240,185,132'],
-      [t < 4 ? 2150 : t < 8.8 ? lerp(2150, 1000, ease((t - 4) / 4.4)) : 1000 + move, 885, 118, '233,169,114'],
-    ];
+    const foxX = t < 4 ? lerp(-120, 560, clamp(t / 4)) : 560 + move;
+    const spots = [[foxX, 880, 92, '242,175,111']];
+    // Ground contact follows visibility: no shadow before a friend enters.
+    if (t >= 4.5) {
+      const hareX = t < 6 ? lerp(470, 760, clamp((t - 4.5) / 1.5)) : 760 + move;
+      spots.push([hareX, 880, 76, '240,185,132']);
+    }
+    if (t >= 4) {
+      const b = clamp((t - 4) / 4.4);
+      const bearX = t < 8.8 ? lerp(2150, 1000, 1 - (1 - b) * (1 - b)) : 1000 + move;
+      spots.push([bearX, 885, 118, '233,169,114']);
+    }
     spots.forEach(([x, y, rad, col]) => {
       halo(ctx, x, y - 34, rad, 125, col, 0.1);
       ellipse(ctx, x, y + 3, rad * 0.9, 11, '#705747', 0.13);
