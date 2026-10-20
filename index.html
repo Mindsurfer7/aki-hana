@@ -3912,6 +3912,22 @@ const sctx = stage.getContext('2d', /^#[sx]\d/.test(location.hash || '') ? { alp
 let CW = W, CH = H, KS = 1;
 const DBG = { on: false, frozen: false, frames: 0 };
 
+/* ---------- performance: 30 fps cap + adaptive render scale ----------
+   ?fps=60 lifts the cap, ?q=high|med|low pins the starting tier. */
+const QS = new URLSearchParams(location.search);
+const FPS = clamp(parseInt(QS.get('fps') || '30', 10) || 30, 15, 120), FRAME_MS = 1000 / FPS;
+const TIERS = [1, 0.8, 0.66, 0.5];
+let TIER = { high: 0, med: 1, low: 2 }[QS.get('q')] ?? (navigator.hardwareConcurrency <= 4 ? 1 : 0);
+const PERF = { ema: 0, slow: 0, fast: 0, lastDraw: 0, pinned: QS.has('q') };
+function perfSample(ms) {
+  if (DBG.on || PERF.pinned) return;
+  PERF.ema = PERF.ema ? PERF.ema * 0.9 + ms * 0.1 : ms;
+  const budget = FRAME_MS * 0.8;
+  PERF.slow = PERF.ema > budget ? PERF.slow + 1 : 0;
+  PERF.fast = PERF.ema < budget * 0.35 ? PERF.fast + 1 : 0;
+  if (PERF.slow > FPS * 1.5 && TIER < TIERS.length - 1) { TIER++; PERF.slow = 0; PERF.ema = 0; resize(); }
+  else if (PERF.fast > FPS * 8 && TIER > 0) { TIER--; PERF.fast = 0; PERF.ema = 0; resize(); }
+}
 function resize() {
   const fixed = /^#[sx]\d/.test(location.hash || '');
   const dpr = fixed ? 1 : Math.min(window.devicePixelRatio || 1, 2);
@@ -3920,9 +3936,10 @@ function resize() {
   if (ch > vh) { ch = vh; cw = (vh * 16) / 9; }
   stage.style.width = cw + 'px'; stage.style.height = ch + 'px';
   let pw = Math.round(cw * dpr), ph = Math.round(ch * dpr);
-  const max = 2560;
+  const max = fixed ? 2560 : 1920 * TIERS[TIER];
+  if (!fixed) { pw *= TIERS[TIER]; ph *= TIERS[TIER]; pw = Math.round(pw); ph = Math.round(ph); }
   if (pw > max) { ph = Math.round((ph * max) / pw); pw = max; }
-  if (pw < 640) { ph = Math.round((ph * 640) / pw); pw = 640; }
+  if (pw < 640 && fixed) { ph = Math.round((ph * 640) / pw); pw = 640; }
   stage.width = pw; stage.height = ph; CW = pw; CH = ph; KS = pw / W;
   const nq = clamp(KS * 1.15, 0.75, 1.9);
   if (Math.abs(nq - Q) > 0.2) { Q = nq; SPR.clear(); }
@@ -4127,6 +4144,9 @@ function prewarmStep(ms) {
 let last = performance.now(), started = false, auto = false;
 const BA = () => buf('sceneA', CW, CH), BB = () => buf('sceneB', CW, CH);
 function frame(now) {
+  if (!DBG.on && now - PERF.lastDraw < FRAME_MS - 2) { requestAnimationFrame(frame); return; }
+  PERF.lastDraw = now;
+  const t0 = performance.now();
   const dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
   if (cur || trans) {
     const adv = DBG.frozen ? 0 : dt;
@@ -4149,6 +4169,7 @@ function frame(now) {
     if (!trans && !DBG.on && (++PRE.tick % 3 === 0 || !started)) prewarmStep(started ? 6 : 14);
   }
   HUD.tick(now);
+  perfSample(performance.now() - t0);
   if (DBG.on && DBG.frozen && ++DBG.frames >= (DBG.maxFrames || 2)) { document.title = 'ready ' + Array.from(sctx.getImageData(CW / 2, CH / 2, 1, 1).data) + ' ' + CW + 'x' + CH + ' t=' + (cur ? cur.t : -1); return; }
   requestAnimationFrame(frame);
 }
