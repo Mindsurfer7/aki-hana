@@ -25,8 +25,8 @@ test('auto/music/nature buttons are reachable from the UI', () => {
 
 test('audio paths do not silence nature when music is muted', () => {
   assert.match(js, /music\.connect\(musicBus\)/);
-  assert.match(js, /musicBus\.connect\(rev\)/);
-  assert.match(js, /amb\.connect\(master\)/);
+  assert.match(js, /music\.connect\(rev\)/);
+  assert.match(js, /amb\.connect\(natureBus\)/);
   assert.match(js, /toggleMusic\(\)/);
   assert.match(js, /toggleAmbience\(\)/);
 });
@@ -40,6 +40,6 @@ test('low-tier rendering avoids costly full-frame filters', () => {
 
 test('auto-play reaches the next scene and respects the last scene', () => {
   assert.match(js, /auto && !trans && cur && idx < SCENES\.length - 1/);
-  assert.match(js, /cur\.t >= duration \+ 12/);
+  assert.match(js, /elapsed >= duration \+ 12/);
   assert.match(js, /setAuto\(!auto\)/);
 });
