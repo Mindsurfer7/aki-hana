@@ -114,6 +114,7 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
       <dt>←</dt><dd>предыдущая сцена</dd>
       <dt>T</dt><dd>показать или скрыть текст сказки</dd>
       <dt>M</dt><dd>звук: ветер, ручей, кото</dd>
+      <dt>V</dt><dd>озвучка сказки</dd>
       <dt>F</dt><dd>полный экран</dd>
       <dt>A</dt><dd>автопоказ без кликов</dd>
     </dl>
@@ -3971,7 +3972,21 @@ function go(i, dir = 1, opts = {}) {
   idx = i; SPR_EPOCH++;
   HUD.scene(def, i);
   AUDIO.mood(def.mood || 'calm', def);
+  VOICE.play(i, opts.instant || !cur ? 0.6 : Math.min(dur, 1.6));
 }
+/* ---------- narration (voice/NN.mp3, optional) ---------- */
+const VOICE = (() => {
+  let on = true, el = null, timer = 0;
+  function stop() { clearTimeout(timer); if (el) { el.pause(); el.onended = null; } el = null; }
+  function play(i, delay) {
+    stop(); if (!on || DBG.on) return;
+    const a = new Audio(`voice/${String(i).padStart(2, '0')}.mp3`); a.volume = 0.95; el = a;
+    a.onerror = () => { if (el === a) el = null; };
+    timer = setTimeout(() => { if (el !== a) return; a.play().catch(a.onerror); }, delay * 1000);
+  }
+  function toggle() { on = !on; if (on) play(idx, 0.2); else stop(); return on; }
+  return { play, stop, toggle, get busy() { return !!el && !el.ended && !el.error; } };
+})();
 const next = () => { if (idx < SCENES.length - 1) go(idx + 1, 1); else HUD.flash('Конец сказки — ← чтобы вернуться'); };
 const prev = () => { if (idx > 0) go(idx - 1, -1); };
 
@@ -4165,7 +4180,7 @@ function frame(now) {
       renderScene(sctx, cur);
     }
     post(now);
-    if (auto && !trans && cur && cur.t > (cur.def.dur || 15)) next();
+    if (auto && !trans && cur && cur.t > (cur.def.dur || 15) && !VOICE.busy) next();
     if (!trans && !DBG.on && (++PRE.tick % 3 === 0 || !started)) prewarmStep(started ? 6 : 14);
   }
   HUD.tick(now);
@@ -4237,6 +4252,7 @@ window.addEventListener('keydown', e => {
   else if (k === 't' || k === 'T' || k === 'е' || k === 'Е') HUD.toggleText();
   else if (k === 'm' || k === 'M' || k === 'ь' || k === 'Ь') HUD.flash(AUDIO.toggle() ? 'Звук включён (M)' : 'Звук выключен (M)');
   else if (k === 'a' || k === 'A' || k === 'ф' || k === 'Ф') { auto = !auto; HUD.flash(auto ? 'Автопоказ включён (A)' : 'Автопоказ выключен (A)'); }
+  else if (k === 'v' || k === 'V' || k === 'м' || k === 'М') HUD.flash(VOICE.toggle() ? 'Озвучка включена (V)' : 'Озвучка выключена (V)');
   else if (k === 'h' || k === 'H' || k === '?' || k === 'р' || k === 'Р') HUD.help.hidden = !HUD.help.hidden;
   else if (k === 'Escape') HUD.help.hidden = true;
 });
