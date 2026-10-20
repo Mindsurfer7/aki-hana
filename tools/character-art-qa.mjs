@@ -6,7 +6,7 @@
    Output: art/qa (excluded from Git by convention).
 */
 import { chromium } from 'playwright';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -66,7 +66,9 @@ try {
       c.fillText(kind,10,yy-30);
     });
   });
-  await page.locator('#character-comparison').screenshot({path:dir+'/closeups-before-after.png'});
+  await writeFile(dir+'/closeups-before-after.png',Buffer.from(
+    (await page.evaluate(()=>document.querySelector('#character-comparison').toDataURL('image/png'))).split(',')[1],
+    'base64'));
   // Motion sweep: front/back, raised hand, leap, grip.
   await page.evaluate(()=>{
     const canvas=document.querySelector('#character-comparison');
@@ -87,6 +89,8 @@ try {
       c.fillText(kind+' motion',12,yy-20);
     });
   });
-  await page.locator('#character-comparison').screenshot({path:dir+'/poses-before-after.png'});
+  await writeFile(dir+'/poses-before-after.png',Buffer.from(
+    (await page.evaluate(()=>document.querySelector('#character-comparison').toDataURL('image/png'))).split(',')[1],
+    'base64'));
   process.stdout.write('QA screenshots: '+dir+'\n');
 } finally { await browser.close(); }
