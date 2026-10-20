@@ -48,7 +48,7 @@ try {
     await page.selectOption('#time', moment);
     await page.waitForFunction(() =>
       document.getElementById('status').textContent.startsWith('Оба кадра готовы.'),
-    { timeout: 20000 });
+    undefined, { timeout: 20000 });
     const frames = await page.evaluate(() => {
       const b = document.querySelector('#before').contentWindow.document.querySelector('#stage');
       const a = document.querySelector('#after').contentWindow.document.querySelector('#stage');
