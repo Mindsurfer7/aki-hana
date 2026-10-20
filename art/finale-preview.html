@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aki Hana · Finale Art · Before / After</title>
+<style>
+  :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #151920; color: #f6e8d0; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; }
+  h1 { font: 500 clamp(25px, 4vw, 38px) Georgia, serif; margin: 0 0 8px; }
+  p { color: #d0c7b9; line-height: 1.5; margin: 8px 0; }
+  .bar { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; margin: 24px 0 12px; }
+  label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  select, button { color: #f6e8d0; border: 1px solid #7e715f; background: #282e38; border-radius: 7px; padding: 11px 15px; font-size: 14px; }
+  button { cursor: pointer; } button:focus-visible, select:focus-visible { outline: 2px solid #f9cb8d; outline-offset: 2px; }
+  button:hover { background: #3b414a; }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  .pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .screen { min-width: 0; }
+  .screen h2 { font-size: 16px; font-weight: 500; letter-spacing: .03em; }
+  iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 1px solid #6b6260; border-radius: 5px; background: black; }
+  .note { margin-top: 18px; font-size: 13px; }
+  #status { min-height: 22px; color: #dfc494; }
+  @media (max-width: 850px) { .pair { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<h1>Аки Хана · Художественный финал</h1>
+<p>Сравнение на одном таймкоде: оригинальный рендер слева и модуль команды D справа. Звук, камера, движения, субтитры и переходы не изменены.</p>
+<div class="bar">
+  <label>Сцена
+    <select id="scene">
+      <option value="17">17 · Воспоминание</option>
+      <option value="18">18 · Надежда</option>
+      <option value="19">19 · Друзья</option>
+      <option value="20">20 · Вместе — строительство</option>
+      <option value="21">21 · Домик готов</option>
+      <option value="22">22 · Ночной лес</option>
+    </select>
+  </label>
+  <label>Момент
+    <select id="time">
+      <option value="default">Главный кадр</option>
+      <option value="early">Начало</option>
+      <option value="middle">Середина</option>
+      <option value="end">Ближе к концу</option>
+    </select>
+  </label>
+  <button id="download" disabled>Сохранить before / after (PNG)</button>
+  <button id="toggle" disabled aria-pressed="true">Новый арт: включён</button>
+</div>
+<div id="status" role="status" aria-live="polite">Загрузка кадров…</div>
+<div class="pair">
+  <section class="screen"><h2>Before · main</h2><iframe id="before" title="Исходная сцена"></iframe></section>
+  <section class="screen"><h2>After · finale-art.js</h2><iframe id="after" title="Сцена после художественной переработки"></iframe></section>
+</div>
+<p class="note">Запускай с HTTP-сервера в корне проекта, например <code>python3 -m http.server 8000</code>, затем открывай <code>http://localhost:8000/art/finale-preview.html</code>. Для скриншотов используй одинаковые сцены и таймкоды; неподключённые скрипты основного показа не затрагиваются.</p>
+<script>
+'use strict';
+const steps = {
+  17: [1, 8, 13, 8],
+  18: [1, 9, 16, 9],
+  19: [2, 8, 15, 8],
+  20: [4, 11, 21, 11],
+  21: [2, 11, 18, 11],
+  22: [2, 11, 19, 11],
+};
+const $ = id => document.getElementById(id);
+const before = $('before'), after = $('after'), scene = $('scene'), time = $('time');
+const status = $('status'), dl = $('download'), toggle = $('toggle');
+let generation = 0, loaded = { before: false, after: false }, controller = null;
+let current = { index: 17, t: 8 };
+function stageEval(frame, expr) { return frame.contentWindow.eval(expr); }
+function ready(name, generationAtLoad) {
+  if (generationAtLoad !== generation) return;
+  loaded[name] = true;
+  const i = current.index - 1;
+  const setup = 'idx=' + i + '; cur=makeInst(idx); cur.t=' + current.t + '; ' +
+    'DBG.on=true; DBG.frozen=true; renderScene(sctx,cur); post(performance.now());';
+  if (name === 'after') {
+    const script = after.contentWindow.document.createElement('script');
+    script.src = new URL('./finale-art.js', document.baseURI).href;
+    script.onload = () => {
+      if (generation !== generationAtLoad) return;
+      controller = stageEval(after, 'AkiFinaleArt.install({scenes:SCENES,hooks:{L,camAt,rng}})');
+      stageEval(after, setup);
+      update();
+    };
+    script.onerror = () => { status.textContent = 'Не удалось подключить finale-art.js'; loaded.after = false; };
+    after.contentWindow.document.head.appendChild(script);
+  } else { stageEval(before, setup); update(); }
+}
+function update() {
+  const ok = loaded.before && loaded.after && controller;
+  dl.disabled = toggle.disabled = !ok;
+  status.textContent = ok ? 'Оба кадра готовы. Таймкод: ' + current.t + ' с.' : 'Загрузка кадров…';
+}
+function render() {
+  generation++; loaded = { before: false, after: false }; controller = null;
+  dl.disabled = toggle.disabled = true;
+  toggle.textContent = 'Новый арт: включён'; toggle.setAttribute('aria-pressed', 'true');
+  const n = Number(scene.value), opts = steps[n];
+  const timeIndex = { early: 0, middle: 1, end: 2, default: 3 }[time.value];
+  current = { index: n, t: opts[timeIndex] };
+  const hash = '#s' + n + 't' + current.t + 'f';
+  const g = generation;
+  before.onload = () => ready('before', g);
+  after.onload = () => ready('after', g);
+  before.src = '../index.html' + hash;
+  after.src = '../index.html' + hash;
+  update();
+}
+function save(frame, filename) {
+  const cv = frame.contentWindow.document.getElementById('stage');
+  const link = document.createElement('a'); link.download = filename;
+  link.href = cv.toDataURL('image/png');
+  document.body.appendChild(link); link.click(); link.remove();
+}
+dl.addEventListener('click', () => {
+  if (dl.disabled) return;
+  const suffix = current.index + '-' + current.t + 's.png';
+  try {
+    save(before, 'before-' + suffix);
+    save(after, 'after-' + suffix);
+    status.textContent = 'PNG подготовлены. Возможно, браузер попросит разрешить две загрузки.';
+  } catch (err) {
+    status.textContent = 'Сохранение не удалось: ' + err.message;
+  }
+});
+toggle.addEventListener('click', () => {
+  if (!controller) return;
+  const enabled = controller.setEnabled(!controller.enabled);
+  stageEval(after, 'renderScene(sctx,cur); post(performance.now());');
+  toggle.textContent = 'Новый арт: ' + (enabled ? 'включён' : 'выключен');
+  toggle.setAttribute('aria-pressed', String(enabled));
+});
+scene.addEventListener('change', render);
+time.addEventListener('change', render);
+render();
+</script>
+</body>
+</html>
