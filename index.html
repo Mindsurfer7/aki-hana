@@ -72,6 +72,9 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
 .ctls { display: flex; gap: 6px; }
 .ctl { appearance: none; border: 1px solid rgba(241,231,214,0.25); background: rgba(11,8,6,0.5); color: var(--paper); font: 14px var(--f-text); height: 34px; min-width: 34px; padding: 0 10px; border-radius: 17px; cursor: pointer; }
 .ctl:hover { border-color: rgba(241,231,214,0.6); }
+.ctl[aria-pressed="false"] { opacity: .55; }
+#btnAuto[aria-pressed="true"] { background: var(--vermilion); border-color: var(--gold); }
+.ctl:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 #toast { position: absolute; top: max(22px, env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); background: var(--smoke); padding: 8px 16px; border-radius: 999px; font-size: 14px; opacity: 0; transition: opacity .4s; }
 #toast.show { opacity: 1; }
 #help { position: fixed; inset: 0; pointer-events: auto; display: grid; place-items: center; background: rgba(8,6,4,0.72); }
@@ -80,7 +83,15 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
 #help dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 18px; font-size: 15px; }
 #help dt { color: var(--gold); white-space: nowrap; }
 #help dd { margin: 0; color: var(--paper-dim); }
-@media (max-width: 640px) { #chRu { font-size: 18px; } #chJp { font-size: 22px; } .ctl.wide { display: none; } #count { display: none; } }
+@media (max-width: 640px) {
+  #chRu { font-size: 18px; } #chJp { font-size: 22px; }
+  .ctl.wide, #btnSound, #btnHelp { display: none; }
+  #progress { display: none; }
+  #count { display: inline; min-width: 42px; font-size: 14px; }
+  #bar { gap: 4px; justify-content: space-between; }
+  .ctls { gap: 3px; }
+  .ctl { height: 32px; min-width: 32px; padding: 0 7px; }
+}
 @media (prefers-reduced-motion: reduce) { #title, #chapter, #caption { transition-duration: .01s; } }
 </style>
 
@@ -99,7 +110,10 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
       <button class="ctl" id="btnPrev" type="button" aria-label="Предыдущая сцена">←</button>
       <button class="ctl" id="btnNext" type="button" aria-label="Следующая сцена">→</button>
       <button class="ctl wide" id="btnText" type="button">Текст</button>
-      <button class="ctl wide" id="btnSound" type="button">Звук</button>
+      <button class="ctl" id="btnSound" type="button" aria-label="Все фоновые звуки" title="Все фоновые звуки (M)">♪</button>
+      <button class="ctl" id="btnMusic" type="button" aria-label="Музыка" title="Музыка (B)">♫</button>
+      <button class="ctl" id="btnAmb" type="button" aria-label="Звуки природы" title="Звуки природы (N)">≋</button>
+      <button class="ctl" id="btnAuto" type="button" aria-label="Автопоказ" title="Автопоказ (A)">Авто</button>
       <button class="ctl" id="btnFs" type="button" aria-label="Полный экран">⛶</button>
       <button class="ctl" id="btnHelp" type="button" aria-label="Подсказка">?</button>
     </div>
@@ -113,10 +127,12 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
       <dt>→ · пробел · клик</dt><dd>следующая сцена (кликер тоже работает)</dd>
       <dt>←</dt><dd>предыдущая сцена</dd>
       <dt>T</dt><dd>показать или скрыть текст сказки</dd>
-      <dt>M</dt><dd>звук: ветер, ручей, кото</dd>
+      <dt>M</dt><dd>все фоновые звуки</dd>
+      <dt>B</dt><dd>отдельно включить/выключить музыку кото</dd>
+      <dt>N</dt><dd>звуки природы (ветер, ручей, птицы)</dd>
       <dt>V</dt><dd>озвучка сказки</dd>
       <dt>F</dt><dd>полный экран</dd>
-      <dt>A</dt><dd>автопоказ без кликов</dd>
+      <dt>A</dt><dd>автопоказ без кликов (или кнопка «Авто»)</dd>
     </dl>
   </div>
 </div>
@@ -129,8 +145,9 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
     <div class="btns">
       <button class="btn primary" id="btnFull" type="button">Начать на весь экран</button>
       <button class="btn" id="btnWin" type="button">Смотреть в окне</button>
+      <button class="btn" id="btnAutostart" type="button">Автопоказ ▶</button>
     </div>
-    <p class="keys"><kbd>→</kbd> или <kbd>пробел</kbd> — следующая сцена, <kbd>←</kbd> — назад, <kbd>T</kbd> — текст сказки, <kbd>M</kbd> — звук, <kbd>F</kbd> — полный экран. Каждая сцена живёт, пока вы читаете: камера медленно движется, листья падают.</p>
+    <p class="keys"><kbd>→</kbd> или <kbd>пробел</kbd> — следующая сцена, <kbd>←</kbd> — назад, <kbd>T</kbd> — текст сказки, <kbd>M</kbd> — звук, <kbd>F</kbd> — полный экран, <kbd>A</kbd> — автопоказ, <kbd>B</kbd> — музыка, <kbd>N</kbd> — природа. Каждая сцена живёт, пока вы читаете: камера медленно движется, листья падают.</p>
   </div>
 </div>
 
@@ -313,8 +330,8 @@ function soft(ctx, f, fn, alpha = 1) {
   try { fn(x); } finally { SOFT_DEPTH--; }
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = alpha;
-  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
-  if (FILTER_OK && f > 1) ctx.filter = `blur(${(f * 0.45 * cw / W).toFixed(1)}px)`;
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = TIER >= 2 ? 'low' : 'high';
+  if (FILTER_OK && TIER < 2 && f > 1) ctx.filter = `blur(${(f * 0.45 * cw / W).toFixed(1)}px)`;
   ctx.drawImage(b, 0, 0, cw, ch);
   ctx.restore();
 }
@@ -3754,7 +3771,7 @@ scene({
    Kept quiet on purpose: someone is reading the story aloud over it.
    ===================================================================== */
 const AUDIO = (() => {
-  let ac = null, master, music, amb, on = true, ready = false;
+  let ac = null, master, music, musicBus, amb, on = true, musicOn = true, ambientOn = true, ready = false;
   let windG, windF, streamG, streamG2, crickG, droneG, birdOn = 0, crick = 0;
   let mood = 'calm', sched = 0, deg = 6, timer = null, windTarget = 0.2, lastWindSet = 0;
   const PL = new Map();
@@ -3868,8 +3885,10 @@ const AUDIO = (() => {
     master.gain.setValueAtTime(0, ac.currentTime); master.gain.linearRampToValueAtTime(on ? 0.8 : 0, ac.currentTime + 3);
     const rev = ac.createConvolver(); rev.buffer = impulse(3.4, 2.6);
     const rg = ac.createGain(); rg.gain.value = 0.42; rev.connect(rg); rg.connect(master);
-    music = ac.createGain(); music.gain.value = 0.3; music.connect(master); music.connect(rev);
-    amb = ac.createGain(); amb.gain.value = 0.55; amb.connect(master);
+    music = ac.createGain(); music.gain.value = 0.3;
+    musicBus = ac.createGain(); musicBus.gain.value = musicOn ? 1 : 0;
+    music.connect(musicBus); musicBus.connect(master); musicBus.connect(rev);
+    amb = ac.createGain(); amb.gain.value = ambientOn ? 0.55 : 0; amb.connect(master);
     crickG = ac.createGain(); crickG.gain.value = 0; crickG.connect(amb); crickG.connect(rev);
     const brown = noiseBuffer(6, true), white = noiseBuffer(4, false);
     const wN = loopNoise(brown, 'lowpass', 420, 0.7, 0.2); windG = wN.g; windF = wN.f;
@@ -3894,14 +3913,29 @@ const AUDIO = (() => {
     streamG.gain.setTargetAtTime(M.stream * 0.12, t, 1.2);
     streamG2.gain.setTargetAtTime(M.stream * 0.35, t, 1.2);
     droneG.gain.setTargetAtTime(M.drone * 0.5, t, 2);
-    crick = M.crick; crickG.gain.setTargetAtTime(M.crick, t, 2);
+    crick = M.crick; crickG.gain.setTargetAtTime(ambientOn ? M.crick : 0, t, 2);
   }
   return {
     start,
     mood: (name) => setMood(name),
     wind: v => { windTarget = v; },
     toggle() { on = !on; if (ac) master.gain.setTargetAtTime(on ? 0.8 : 0, ac.currentTime, 0.25); return on; },
+    toggleMusic() {
+      musicOn = !musicOn;
+      if (ac) musicBus.gain.setTargetAtTime(musicOn ? 1 : 0, ac.currentTime, 0.18);
+      return musicOn;
+    },
+    toggleAmbience() {
+      ambientOn = !ambientOn;
+      if (ac) {
+        amb.gain.setTargetAtTime(ambientOn ? 0.55 : 0, ac.currentTime, 0.18);
+        crickG.gain.setTargetAtTime(ambientOn ? crick : 0, ac.currentTime, 0.18);
+      }
+      return ambientOn;
+    },
     get on() { return on; },
+    get musicOn() { return musicOn; },
+    get ambientOn() { return ambientOn; },
   };
 })();
 
@@ -3914,11 +3948,13 @@ let CW = W, CH = H, KS = 1;
 const DBG = { on: false, frozen: false, frames: 0 };
 
 /* ---------- performance: 30 fps cap + adaptive render scale ----------
-   ?fps=60 lifts the cap, ?q=high|med|low pins the starting tier. */
+   ?fps=60 lifts the cap, ?q=high|med|low|ultra pins the quality tier. */
 const QS = new URLSearchParams(location.search);
 const FPS = clamp(parseInt(QS.get('fps') || '30', 10) || 30, 15, 120), FRAME_MS = 1000 / FPS;
 const TIERS = [1, 0.8, 0.66, 0.5];
-let TIER = { high: 0, med: 1, low: 2 }[QS.get('q')] ?? (navigator.hardwareConcurrency <= 4 ? 1 : 0);
+let TIER = { high: 0, med: 1, low: 2, ultra: 3 }[QS.get('q')] ??
+  ((navigator.deviceMemory && navigator.deviceMemory <= 2) || navigator.hardwareConcurrency <= 2 ? 2
+    : navigator.hardwareConcurrency <= 4 ? 1 : 0);
 const PERF = { ema: 0, slow: 0, fast: 0, lastDraw: 0, pinned: QS.has('q') };
 function perfSample(ms) {
   if (DBG.on || PERF.pinned) return;
@@ -3944,6 +3980,8 @@ function resize() {
   stage.width = pw; stage.height = ph; CW = pw; CH = ph; KS = pw / W;
   const nq = clamp(KS * 1.15, 0.75, 1.9);
   if (Math.abs(nq - Q) > 0.2) { Q = nq; SPR.clear(); }
+  // Resizing recreates the outgoing transition buffer; regenerate its snapshot.
+  if (trans) trans.fromReady = false;
 }
 
 /* ---------- scene instances ---------- */
@@ -3968,7 +4006,7 @@ function go(i, dir = 1, opts = {}) {
   let dur = dir > 0 ? def.transDur || 1.8 : 0.9;
   if (opts.instant || !cur) { type = cur ? 'cut' : 'fade'; dur = cur ? 0.01 : 2.2; }
   if (trans) cur = trans.to;
-  trans = { from: cur, to, type, dur, t: 0 };
+  trans = { from: cur, to, type, dur, t: 0, fromReady: false };
   idx = i; SPR_EPOCH++;
   HUD.scene(def, i);
   AUDIO.mood(def.mood || 'calm', def);
@@ -3985,7 +4023,7 @@ const VOICE = (() => {
     timer = setTimeout(() => { if (el !== a) return; a.play().catch(a.onerror); }, delay * 1000);
   }
   function toggle() { on = !on; if (on) play(idx, 0.2); else stop(); return on; }
-  return { play, stop, toggle, get busy() { return !!el && !el.ended && !el.error; } };
+  return { play, stop, toggle, get busy() { return !!el && !el.paused && !el.ended && !el.error; } };
 })();
 const next = () => { if (idx < SCENES.length - 1) go(idx + 1, 1); else HUD.flash('Конец сказки — ← чтобы вернуться'); };
 const prev = () => { if (idx > 0) go(idx - 1, -1); };
@@ -4037,8 +4075,8 @@ function composite(type, p, A, B) {
         const f = 1 + Math.round(bl * 10);
         const b = buf('tfocus', CW / f, CH / f), x = b.getContext('2d');
         x.drawImage(src, 0, 0, b.width, b.height);
-        c.imageSmoothingQuality = 'high';
-        if (FILTER_OK) c.filter = `blur(${(bl * 8 * KS).toFixed(1)}px)`;
+        c.imageSmoothingQuality = TIER >= 2 ? 'low' : 'high';
+        if (FILTER_OK && TIER < 2) c.filter = `blur(${(bl * 8 * KS).toFixed(1)}px)`;
         c.globalAlpha = Math.min(1, bl * 1.6);
         c.drawImage(b, 0, 0, CW, CH);
         c.globalAlpha = 1; if (FILTER_OK) c.filter = 'none';
@@ -4084,6 +4122,9 @@ let GRAIN = null, VIGN = null, PAPER = null;
 function post(now) {
   const c = sctx;
   c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1;
+  // Low-end mode keeps the cached vignette, but avoids expensive full-frame filters,
+  // paper and grain. Downsampled scene layers still preserve painterly depth.
+  if (TIER < 2 || DBG.on) {
   // bloom: downsample, square (multiply onto itself) to keep highlights, add back with screen
   const b1 = buf('bl1', CW / 6, CH / 6), x1 = b1.getContext('2d');
   x1.globalCompositeOperation = 'source-over'; x1.globalAlpha = 1;
@@ -4114,6 +4155,7 @@ function post(now) {
   pp.setTransform(new DOMMatrix().scale(Math.max(1, KS * 1.3)));
   c.globalAlpha = 0.16; c.fillStyle = pp; c.fillRect(0, 0, CW, CH);
   c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+  }
   // vignette
   if (!VIGN || VIGN.width !== CW) {
     VIGN = mkCanvas(CW, CH); const v = VIGN.getContext('2d');
@@ -4122,6 +4164,7 @@ function post(now) {
     v.fillStyle = g; v.fillRect(0, 0, CW, CH);
   }
   c.drawImage(VIGN, 0, 0);
+  if (TIER >= 2 && !DBG.on) return;
   // film grain
   if (!GRAIN) {
     GRAIN = mkCanvas(256, 256); const g = GRAIN.getContext('2d'), d = g.createImageData(256, 256), r = rng(3);
@@ -4167,11 +4210,16 @@ function frame(now) {
     const adv = DBG.frozen ? 0 : dt;
     if (trans) {
       trans.t += adv;
-      if (trans.from) { trans.from.t += adv; trans.from.dt = adv; }
+      if (trans.from && !trans.fromReady) { trans.from.t += adv; trans.from.dt = adv; }
       trans.to.t += adv; trans.to.dt = adv;
       const p = clamp(trans.t / trans.dur);
       const A = trans.from ? BA() : null, Bc = BB();
-      if (trans.from) renderScene(A.getContext('2d'), trans.from);
+      // The outgoing scene is effectively frozen in a cinematic transition;
+      // drawing it once halves the scene work for the remaining transition frames.
+      if (trans.from && !trans.fromReady) {
+        renderScene(A.getContext('2d'), trans.from);
+        trans.fromReady = true;
+      }
       renderScene(Bc.getContext('2d'), trans.to);
       composite(trans.type, p, A, Bc);
       if (p >= 1 && !DBG.frozen) { cur = trans.to; trans = null; evictSprites(3); queuePrewarm(cur.i); }
@@ -4180,7 +4228,11 @@ function frame(now) {
       renderScene(sctx, cur);
     }
     post(now);
-    if (auto && !trans && cur && cur.t > (cur.def.dur || 15) && !VOICE.busy) next();
+    if (auto && !trans && cur && idx < SCENES.length - 1) {
+      const duration = cur.def.dur || 15;
+      // A missing/stalled voice file must not block the story forever.
+      if (cur.t >= duration && (!VOICE.busy || cur.t >= duration + 12)) next();
+    }
     if (!trans && !DBG.on && (++PRE.tick % 3 === 0 || !started)) prewarmStep(started ? 6 : 14);
   }
   HUD.tick(now);
@@ -4222,6 +4274,36 @@ const HUD = (() => {
 })();
 
 /* ---------- input ---------- */
+function syncControls() {
+  for (const [id, active, label, shortcut] of [
+    ['btnSound', AUDIO.on, 'Все фоновые звуки', 'M'],
+    ['btnMusic', AUDIO.musicOn, 'Музыка', 'B'],
+    ['btnAmb', AUDIO.ambientOn, 'Звуки природы', 'N'],
+    ['btnAuto', auto, 'Автопоказ', 'A'],
+  ]) {
+    const b = document.getElementById(id);
+    b.setAttribute('aria-pressed', String(active));
+    b.title = label + ': ' + (active ? 'включено' : 'выключено') + ' (' + shortcut + ')';
+    b.setAttribute('aria-label', b.title);
+  }
+}
+function setAuto(enabled) {
+  auto = !!enabled;
+  syncControls();
+  HUD.flash(auto ? 'Автопоказ включён (A)' : 'Автопоказ выключен (A)');
+}
+function toggleMusic() {
+  HUD.flash(AUDIO.toggleMusic() ? 'Музыка включена (B)' : 'Музыка выключена (B)');
+  syncControls();
+}
+function toggleAmbience() {
+  HUD.flash(AUDIO.toggleAmbience() ? 'Звуки природы включены (N)' : 'Звуки природы выключены (N)');
+  syncControls();
+}
+function toggleAllAudio() {
+  HUD.flash(AUDIO.toggle() ? 'Фоновый звук включён (M)' : 'Фоновый звук выключен (M)');
+  syncControls();
+}
 function toggleFull() {
   const d = document;
   try {
@@ -4236,6 +4318,7 @@ function start(full) {
   document.getElementById('hud').hidden = false;
   if (full) toggleFull();
   AUDIO.start();
+  syncControls();
   DBG.frozen = false; cur = null; trans = null;
   go(0, 1);
 }
@@ -4250,8 +4333,10 @@ window.addEventListener('keydown', e => {
   else if (k === 'End') go(SCENES.length - 1, 1);
   else if (k === 'f' || k === 'F' || k === 'а' || k === 'А') toggleFull();
   else if (k === 't' || k === 'T' || k === 'е' || k === 'Е') HUD.toggleText();
-  else if (k === 'm' || k === 'M' || k === 'ь' || k === 'Ь') HUD.flash(AUDIO.toggle() ? 'Звук включён (M)' : 'Звук выключен (M)');
-  else if (k === 'a' || k === 'A' || k === 'ф' || k === 'Ф') { auto = !auto; HUD.flash(auto ? 'Автопоказ включён (A)' : 'Автопоказ выключен (A)'); }
+  else if (k === 'm' || k === 'M' || k === 'ь' || k === 'Ь') toggleAllAudio();
+  else if (k === 'b' || k === 'B' || k === 'и' || k === 'И') toggleMusic();
+  else if (k === 'n' || k === 'N' || k === 'т' || k === 'Т') toggleAmbience();
+  else if (k === 'a' || k === 'A' || k === 'ф' || k === 'Ф') setAuto(!auto);
   else if (k === 'v' || k === 'V' || k === 'м' || k === 'М') HUD.flash(VOICE.toggle() ? 'Озвучка включена (V)' : 'Озвучка выключена (V)');
   else if (k === 'h' || k === 'H' || k === '?' || k === 'р' || k === 'Р') HUD.help.hidden = !HUD.help.hidden;
   else if (k === 'Escape') HUD.help.hidden = true;
@@ -4268,10 +4353,14 @@ window.addEventListener('mousemove', () => HUD.moved());
 window.addEventListener('resize', () => { resize(); if (DBG.on && DBG.frozen) { DBG.frames = 0; frame(last + 16); frame(last + 32); } });
 document.getElementById('btnFull').addEventListener('click', () => start(true));
 document.getElementById('btnWin').addEventListener('click', () => start(false));
+document.getElementById('btnAutostart').addEventListener('click', () => { start(false); setAuto(true); });
 document.getElementById('btnPrev').addEventListener('click', e => { e.stopPropagation(); prev(); });
 document.getElementById('btnNext').addEventListener('click', e => { e.stopPropagation(); next(); });
 document.getElementById('btnText').addEventListener('click', e => { e.stopPropagation(); HUD.toggleText(); });
-document.getElementById('btnSound').addEventListener('click', e => { e.stopPropagation(); HUD.flash(AUDIO.toggle() ? 'Звук включён (M)' : 'Звук выключен (M)'); });
+document.getElementById('btnSound').addEventListener('click', e => { e.stopPropagation(); toggleAllAudio(); });
+document.getElementById('btnMusic').addEventListener('click', e => { e.stopPropagation(); toggleMusic(); });
+document.getElementById('btnAmb').addEventListener('click', e => { e.stopPropagation(); toggleAmbience(); });
+document.getElementById('btnAuto').addEventListener('click', e => { e.stopPropagation(); setAuto(!auto); });
 document.getElementById('btnFs').addEventListener('click', e => { e.stopPropagation(); toggleFull(); });
 document.getElementById('btnHelp').addEventListener('click', e => { e.stopPropagation(); HUD.help.hidden = !HUD.help.hidden; });
 document.getElementById('help').addEventListener('click', () => { HUD.help.hidden = true; });
@@ -4279,6 +4368,7 @@ document.getElementById('help').addEventListener('click', () => { HUD.help.hidde
 /* ---------- boot ---------- */
 resize();
 HUD.build();
+syncControls();
 (function boot() {
   if (location.hash === '#perf') {
     started = true; document.getElementById('start').hidden = true; document.getElementById('hud').hidden = false;
