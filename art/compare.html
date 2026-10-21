@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aki Hana · сцены 1–5 · before / after</title>
+<style>
+:root { color-scheme: light; font-family:system-ui,sans-serif; }
+body { margin:0; background:#f3eee3; color:#3c382f; }
+main { max-width:1420px; padding:22px; margin:auto; }
+header { margin-bottom:24px; }
+h1 { font-size:26px; margin:0 0 8px; } h2 { font-size:19px; margin:18px 0 10px; }
+p { line-height:1.5; max-width:78ch; } button, a { color:#435f60; }
+button { font:inherit; border:1px solid #a4b0a1; background:white; border-radius:8px; padding:9px 13px; cursor:pointer; }
+.row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+article { min-width:0; background:white; border:1px solid #ded4c4; border-radius:12px; padding:13px; }
+figure { margin:0; } img { width:100%; height:auto; aspect-ratio:16/9; display:block; background:#d0c9b6; }
+figcaption { display:flex; justify-content:space-between; gap:8px; margin:9px 0 5px; font-weight:bold; }
+.caption { margin-top:10px; padding:10px; background:#343024; color:white; border-radius:5px; text-align:center; }
+.stat { color:#625e52; font-size:13px; }
+#stageFrame { position:fixed; left:-9999px; top:0; width:1920px; height:1080px; border:0; pointer-events:none; }
+@media(max-width:760px) { .row {grid-template-columns:1fr;} main{padding:12px;} }
+</style></head><body>
+<main>
+<header><h1>Aki Hana — художественные сравнения</h1>
+<p>Визуальные снимки оригинальной сцены и того же кадра с модулем
+<code>environment-art.js</code>. Композиция и движения камеры не меняются.
+Подписи ниже — для ручной проверки контраста; сама сказка рисует их отдельным DOM-слоем.</p>
+<p><button id="generate">Сформировать все 5 пар</button>
+<span id="status" aria-live="polite">Нажмите кнопку для захвата кадров.</span></p></header>
+<div id="gallery"></div>
+</main><iframe id="stageFrame" title="Изолированное воспроизведение сцен"></iframe>
+<script>
+'use strict';
+const scenes = [
+  [1, 'hokkaido', 'Осень на Хоккайдо', 'Осенью, в одном японском лесу, на острове Хоккайдо…', 9],
+  [2, 'akihana', 'Аки Хана', '…жила маленькая лисичка по имени Аки Хана — «осенний цветок».', 8],
+  [3, 'trees', 'Высокие деревья', 'Вокруг росли высокие деревья,', 8],
+  [4, 'brook', 'Ручей', 'журчал ручей,', 8],
+  [5, 'village', 'Лесные домики', 'а среди мха и папоротников находились уютные лесные домики.', 8]
+];
+const iframe = document.getElementById('stageFrame');
+const gallery = document.getElementById('gallery');
+const status = document.getElementById('status');
+const button = document.getElementById('generate');
+const nap = ms => new Promise(resolve => setTimeout(resolve, ms));
+function load(url) {
+  return new Promise((resolve, reject) => {
+    iframe.onload = resolve; iframe.onerror = () => reject(new Error('Невозможно загрузить index.html'));
+    iframe.src = url;
+  });
+}
+function addScript(win, url) {
+  return new Promise((resolve, reject) => {
+    const script = win.document.createElement('script');
+    script.src = url; script.onload = resolve;
+    script.onerror = () => reject(new Error('Модуль environment-art.js не загрузился'));
+    win.document.body.appendChild(script);
+  });
+}
+function capture(win) {
+  const canvas = win.document.getElementById('stage');
+  if (!canvas || !canvas.width) throw new Error('Canvas #stage не найден');
+  return canvas.toDataURL('image/png');
+}
+function makeShot(data, scene, suffix) {
+  const article = document.createElement('article');
+  const figure = document.createElement('figure');
+  const img = document.createElement('img');
+  img.src = data; img.alt = scene[2] + ' · ' + suffix;
+  const cap = document.createElement('figcaption');
+  const title = document.createElement('span'); title.textContent = suffix;
+  const a = document.createElement('a');
+  a.href = data; a.download = 'aki-' + scene[1] + '-' + suffix.toLowerCase() + '.png';
+  a.textContent = 'PNG ↓';
+  cap.append(title, a); figure.append(img, cap);
+  const caption = document.createElement('div'); caption.className = 'caption';
+  caption.textContent = scene[3];
+  article.append(figure, caption);
+  return article;
+}
+async function run() {
+  gallery.replaceChildren();
+  button.disabled = true;
+  try {
+    for (const scene of scenes) {
+      status.textContent = 'Сцена ' + scene[0] + ' из 5…';
+      await load('../index.html#s' + scene[0] + 't' + scene[4] + 'f');
+      await nap(700); // source page renders two deterministic frozen frames
+      const win = iframe.contentWindow;
+      const before = capture(win);
+      await addScript(win, new URL('environment-art.js', document.baseURI).href);
+      // The production entry point is left untouched. Re-initialise ONLY this test
+      // instance after opting into the new art and force one frozen redraw.
+      const timings = win.eval('(function(){' +
+        'const n=AkiEnvironmentArt.install(SCENES);' +
+        'cur=makeInst(' + (scene[0] - 1) + ');cur.t=' + scene[4] + ';' +
+        'DBG.frozen=true;DBG.frames=0;' +
+        'const t0=performance.now();frame(t0);const cold=performance.now()-t0;' +
+        'DBG.frames=0;const t1=performance.now();frame(t1);' +
+        'return {installed:n,cold:cold,warm:performance.now()-t1,' +
+        'cache:AkiEnvironmentArt.getCacheStats()};})()');
+      if (timings.installed !== 5) throw new Error('Подключилось не 5 сцен, а ' + timings.installed);
+      const after = capture(win);
+      const section = document.createElement('section');
+      const title = document.createElement('h2');
+      title.textContent = scene[0] + '. ' + scene[2];
+      const row = document.createElement('div'); row.className = 'row';
+      row.append(makeShot(before, scene, 'Before'), makeShot(after, scene, 'After'));
+      const metric = document.createElement('p'); metric.className = 'stat';
+      metric.textContent = 'Замер полного кадра после установки: холодный ' +
+        timings.cold.toFixed(1) + ' мс, повторный ' + timings.warm.toFixed(1) +
+        ' мс; кэш ' + (timings.cache.bytes / 1048576).toFixed(1) + ' МиБ.';
+      section.append(title, row, metric); gallery.append(section);
+    }
+    status.textContent = 'Готово: 5 пар, 10 кадров PNG.';
+  } catch (e) {
+    status.textContent = 'Ошибка: ' + e.message + '. Откройте через HTTP-сервер, не file://.';
+  } finally { button.disabled = false; }
+}
+button.addEventListener('click', run);
+</script></body></html>
