@@ -48,7 +48,8 @@ try {
     const slides = [];
     for (let i=0; i<TIMES.length; i++) {
       errors.length = 0;
-      const url = 'http://127.0.0.1:' + port + '/' + pageFile + '#s' + String(i+1) + 't' + String(TIMES[i]) + 'f';
+      // The unique query forces a full document reload: hash-only navigation reuses frozen scene 1.
+      const url = 'http://127.0.0.1:' + port + '/' + pageFile + '?staticExport=' + String(i+1) + '#s' + String(i+1) + 't' + String(TIMES[i]) + 'f';
       await page.goto(url, {waitUntil:'load', timeout:45000});
       await page.waitForFunction(() => document.title.startsWith('ready '), {timeout:45000});
       if (errors.length) throw new Error(mode + ' scene ' + (i+1) + ' JS errors: ' + errors.join('; '));
@@ -57,6 +58,10 @@ try {
       })));
       if (metadata.length !== 22) throw new Error('Expected 22 scenes, got '+metadata.length);
       const scene = metadata[i];
+      const renderedScene = await page.evaluate(() => ({ id: cur && cur.def && cur.def.id, time: cur && cur.t }));
+      if (renderedScene.id !== scene.id || Math.abs(renderedScene.time - TIMES[i]) > 0.01) {
+        throw new Error('Captured wrong scene: expected ' + scene.id + ' at ' + TIMES[i] + 's, got ' + JSON.stringify(renderedScene));
+      }
       const file = String(i+1).padStart(2,'0') + '-' + scene.id + '.webp';
       const data = await page.evaluate(({width,height}) => {
         const src = document.getElementById('stage');
