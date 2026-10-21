@@ -15,6 +15,7 @@ for (const mode of modes) {
   assert(html.includes('id="story-data"') && html.includes('frames/01-hokkaido.webp'));
   assert(!html.includes('__STORY_DATA__'));
   assert(!html.includes('<canvas'));
+  const uniqueFrames = new Set();
   for (const [i,scene] of slides.entries()) {
     assert.equal(scene.index,i+1);
     assert(scene.titleRu && typeof scene.text==='string');
@@ -23,6 +24,9 @@ for (const mode of modes) {
     assert(bytes.byteLength>1000,mode+' '+scene.id);
     assert.equal(bytes.toString('ascii',0,4),'RIFF',file+' RIFF');
     assert.equal(bytes.toString('ascii',8,12),'WEBP',file+' WebP');
+    const key = bytes.toString('base64');
+    assert(!uniqueFrames.has(key),mode+' duplicate image detected at scene '+(i+1));
+    uniqueFrames.add(key);
   }
   console.log(mode+': 22 WebP frames, manifest and slideshow OK');
 }
