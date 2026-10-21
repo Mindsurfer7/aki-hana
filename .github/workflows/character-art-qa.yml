@@ -1,0 +1,42 @@
+name: Character Art B QA
+
+on:
+  pull_request:
+    paths:
+      - 'art/**'
+      - 'tests/character-art.test.cjs'
+      - 'tools/character-art-qa.mjs'
+      - '.github/workflows/character-art-qa.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  character-art:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and pose contract tests
+        run: |
+          node --check art/character-art.js
+          node --check tools/character-art-qa.mjs
+          node --test tests/character-art.test.cjs
+      - name: Install Chromium screenshot runner
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+      - name: Capture five before-after scenes and pose closeups
+        run: node tools/character-art-qa.mjs
+      - name: Upload independent visual QA artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: character-art-before-after
+          path: art/qa/*.png
+          if-no-files-found: warn
+          retention-days: 14
