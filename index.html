@@ -169,6 +169,11 @@ kbd { font-family: var(--f-text); font-size: 12px; border: 1px solid rgba(241,23
   </div>
 </div>
 
+<!-- Scoped painterly art layers: each owns a disjoint set of story scenes. -->
+<script src="art/environment-art.js"></script>
+<script src="art/character-art.js"></script>
+<script src="art/emotional-art.js"></script>
+<script src="art/finale-art.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -4017,13 +4022,18 @@ function resize() {
 
 /* ---------- scene instances ---------- */
 let idx = 0, cur = null, trans = null;
+// Render-scoped scene identity is essential when two scenes crossfade together.
+let activeArtSceneId = null;
 function makeInst(i) { const def = SCENES[i]; const st = {}; if (def.init) def.init(st); return { i, def, st, t: 0, dt: 0 }; }
 function renderScene(ctx, inst) {
   ctx.setTransform(KS, 0, 0, KS, 0, 0);
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
   if (FILTER_OK) ctx.filter = 'none';
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-  inst.def.draw(ctx, inst.t, inst.st, inst.dt);
+  const previousArtSceneId = activeArtSceneId;
+  activeArtSceneId = inst.def.id;
+  try { inst.def.draw(ctx, inst.t, inst.st, inst.dt); }
+  finally { activeArtSceneId = previousArtSceneId; }
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = 'source-over';
 }
@@ -4433,6 +4443,17 @@ document.getElementById('btnAuto').addEventListener('click', e => { e.stopPropag
 document.getElementById('btnFs').addEventListener('click', e => { e.stopPropagation(); toggleFull(); });
 document.getElementById('btnHelp').addEventListener('click', e => { e.stopPropagation(); HUD.help.hidden = !HUD.help.hidden; });
 document.getElementById('help').addEventListener('click', () => { HUD.help.hidden = true; });
+
+/* ---------- art integration (all four independent scene groups) ---------- */
+// Keep the original painter available for instant rollback without touching audio.
+if (window.AkiEnvironmentArt) window.AkiEnvironmentArt.install(SCENES);
+if (window.CharacterArt) {
+  const originalCreaturePainter = creature;
+  creature = window.CharacterArt.createAdapter(originalCreaturePainter, () => activeArtSceneId);
+  window.CharacterArt.setEnabled(true);
+}
+if (window.AkiEmotionalArt) window.AkiEmotionalArt.install(SCENES);
+if (window.AkiFinaleArt) window.AkiFinaleArt.install({ scenes: SCENES, hooks: { L, camAt, rng }, enabled: true });
 
 /* ---------- boot ---------- */
 resize();

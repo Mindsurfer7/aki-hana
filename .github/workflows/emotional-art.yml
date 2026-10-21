@@ -1,0 +1,34 @@
+name: Emotional Art · Team C
+on:
+  pull_request:
+    paths:
+      - 'art/emotional-art.js'
+      - 'tools/build-emotional-preview.mjs'
+      - 'tools/capture-emotional.mjs'
+      - 'tools/verify-emotional-art.mjs'
+      - '.github/workflows/emotional-art.yml'
+  workflow_dispatch:
+
+jobs:
+  emotional-art:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check original playback and isolated art adapter
+        run: node --test tools/verify-playback.mjs tools/verify-emotional-art.mjs
+      - name: Capture before/after and close-up gallery
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+        run: node tools/capture-emotional.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aki-emotional-art-before-after
+          path: |
+            art/review-shots/*.png
+            emotional-review.html
+          if-no-files-found: error
