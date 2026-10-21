@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Аки Хана — После редизайна (без анимации)</title>
+<style>
+:root { color-scheme:light; font-family: ui-rounded, system-ui, -apple-system, "Segoe UI", sans-serif; background:#f7f0e4; color:#382b25; }
+* { box-sizing:border-box }
+body { margin:0; min-height:100vh; padding:clamp(12px,2vw,30px); }
+main { max-width:1330px; margin:auto; }
+header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+h1 { font-size:clamp(21px,3vw,33px); margin:0; font-weight:750; }
+small,.muted { color:#796b60; }
+a { color:#78502b; text-underline-offset:3px; }
+nav { display:flex; gap:10px; flex-wrap:wrap; }
+nav a { display:inline-block; border:1px solid #cfbaa2; border-radius:25px; padding:8px 13px; text-decoration:none; background:#fff9f0; }
+nav a[aria-current="page"] { font-weight:700; background:#e8d6bb; }
+figure { margin:0; overflow:hidden; background:#e4d9c9; border-radius:17px; box-shadow:0 7px 26px #3e26131b; }
+figure img { display:block; width:100%; height:auto; aspect-ratio:16 / 9; object-fit:contain; }
+.story { background:#fff9f2; margin-top:16px; padding:clamp(16px,3vw,25px); border-radius:15px; border:1px solid #e8d9c6; }
+.chapter { display:flex; justify-content:space-between; gap:16px; align-items:baseline; }
+h2 { font-size:clamp(22px,2.3vw,30px); margin:0; }
+#jp { font-size:18px; color:#907c68; }
+#body { font-size:clamp(17px,1.9vw,21px); line-height:1.65; margin:12px 0 0; white-space:pre-line; }
+.controls { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:16px; }
+button,select { background:#fffdf9; border:1px solid #b7a38f; color:#382b25; padding:12px 15px; font:inherit; border-radius:10px; cursor:pointer; }
+button:focus-visible,select:focus-visible,a:focus-visible { outline:3px solid #bd8952; outline-offset:2px; }
+button:disabled { opacity:.43; cursor:default; }
+button.primary { background:#875a35; color:#fff; border-color:#875a35; }
+select { flex:1; min-width:160px; max-width:340px; }
+#count { font-variant-numeric:tabular-nums; white-space:nowrap; }
+footer { padding:18px 0; color:#796b60; font-size:13px; }
+@media (max-width:600px) { .controls button { flex:1; } figure { border-radius:9px; } .chapter { align-items:center; } }
+@media (prefers-reduced-motion:reduce) { * {scroll-behavior:auto!important; transition:none!important; animation:none!important;} }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div><h1>Аки Хана <small>· После редизайна</small></h1><small>22 иллюстрации · без анимации и тяжёлого рендеринга</small></div>
+  <nav aria-label="Версии"><a href="../">Все версии</a><a href="../classic/" id="classic-link">До редизайна</a><a href="../disney/" id="disney-link">После редизайна</a></nav>
+</header>
+<figure><img id="frame" alt="Иллюстрация к сцене" width="1600" height="900" decoding="async"></figure>
+<section class="story" aria-live="polite" aria-atomic="true">
+  <div class="chapter"><h2 id="ru"></h2><span id="jp" lang="ja"></span></div>
+  <p id="body"></p>
+  <div class="controls">
+    <button id="prev" type="button" aria-label="Предыдущая сцена">← Назад</button>
+    <select id="chapters" aria-label="Выбрать сцену"></select>
+    <button id="next" type="button" class="primary" aria-label="Следующая сцена">Далее →</button>
+    <button id="voice" type="button" title="Озвучка текущей сцены, без фоновой музыки">▶ Озвучка</button>
+    <span id="count"></span>
+  </div>
+</section>
+<footer>Картинки WebP уже готовы: никакой Canvas-анимации при просмотре. Листайте стрелками ← → или кнопками. Озвучка включается вручную.</footer>
+</main>
+<script id="story-data" type="application/json">[{"id":"hokkaido","titleRu":"Осень на Хоккайдо","titleJa":"北海道の秋","text":"Осенью, в одном японском лесу, на острове Хоккайдо…","index":1,"time":9,"image":"frames/01-hokkaido.webp"},{"id":"akihana","titleRu":"Аки Хана — «осенний цветок»","titleJa":"秋花","text":"…жила маленькая лисичка по имени Аки Хана — «осенний цветок».","index":2,"time":8,"image":"frames/02-akihana.webp"},{"id":"trees","titleRu":"Высокие деревья","titleJa":"森","text":"Вокруг росли высокие деревья,","index":3,"time":8,"image":"frames/03-trees.webp"},{"id":"brook","titleRu":"Ручей","titleJa":"小川","text":"журчал ручей,","index":4,"time":8,"image":"frames/04-brook.webp"},{"id":"village","titleRu":"Лесные домики","titleJa":"森の家","text":"а среди мха и папоротников находились уютные лесные домики.","index":5,"time":8,"image":"frames/05-village.webp"},{"id":"watch","titleRu":"Лисичка наблюдает","titleJa":"見つめる","text":"Лисичка часто наблюдала за другими зверями.","index":6,"time":8,"image":"frames/06-watch.webp"},{"id":"hare","titleRu":"Зайчик строит домик","titleJa":"兎","text":"Зайчик быстро строил себе домик,","index":7,"time":8,"image":"frames/07-hare.webp"},{"id":"squirrel","titleRu":"Белочка собирает орешки","titleJa":"栗鼠","text":"белочка ловко собирала орешки,","index":8,"time":10,"image":"frames/08-squirrel.webp"},{"id":"bear","titleRu":"Медвежонок чинит","titleJa":"子熊","text":"а медвежонок умел чинить сломанные вещи.","index":9,"time":5,"image":"frames/09-bear.webp"},{"id":"doubt","titleRu":"Наверное, я хуже других","titleJa":"思い","text":"«Как у них всё хорошо получается! — думала лисичка. — А у меня не всегда выходит. Наверное, я хуже других».","index":10,"time":9,"image":"frames/10-doubt.webp"},{"id":"decide","titleRu":"Решение","titleJa":"決心","text":"Однажды лисичка решила построить себе уютный домик. Она собрала веточки, мох и большие листья.\n«Я попробую всё сделать сама», — решила она.","index":11,"time":9,"image":"frames/11-decide.webp"},{"id":"wind","titleRu":"Ветер","titleJa":"風","text":"Но веточки постоянно падали, а листья с крыши сдувал ветер. Лисичка пробовала снова и снова, но домик никак не получался.","index":12,"time":8,"image":"frames/12-wind.webp"},{"id":"offer","titleRu":"Зайчик предлагает помощь","titleJa":"申し出","text":"Мимо проходил зайчик.\n— Лисичка, давай я тебе помогу!\n— Нет, спасибо! Я сама справлюсь, — ответила лисичка.\nНа самом деле она боялась, что зайчик подумает, будто она ничего не умеет.","index":13,"time":9,"image":"frames/13-offer.webp"},{"id":"tired","titleRu":"Лисичка устала","titleJa":"夕暮れ","text":"Лисичка продолжила работать, но вскоре устала и расстроилась.","index":14,"time":8,"image":"frames/14-tired.webp"},{"id":"bearcomes","titleRu":"Медвежонок","titleJa":"優しさ","text":"Тут подошёл медвежонок.\n— Почему ты грустишь?\n— Я хочу построить домик, но у меня ничего не получается. У других зверей всё выходит лучше, чем у меня, — призналась лисичка.","index":15,"time":8,"image":"frames/15-bearcomes.webp"},{"id":"talk","titleRu":"Разговор","titleJa":"言葉","text":"Медвежонок удивился:\n— Но ведь у каждого что-то получается лучше, а чему-то приходится учиться.","index":16,"time":9,"image":"frames/16-talk.webp"},{"id":"memory","titleRu":"Воспоминание медвежонка","titleJa":"思い出","text":"— Я, например, не умею красиво украшать домики. Поэтому я прошу белочку помочь мне с украшениями.","index":17,"time":8,"image":"frames/17-memory.webp"},{"id":"hope","titleRu":"Необязательно всё уметь самому","titleJa":"光","text":"— Значит, другие звери тоже иногда просят о помощи? — спросила лисичка.\n— Конечно! — ответил медвежонок. — Необязательно всё уметь самому.","index":18,"time":9,"image":"frames/18-hope.webp"},{"id":"friends","titleRu":"Друзья","titleJa":"仲間","text":"Лисичка подумала и решила позвать зайчика и медвежонка на помощь.","index":19,"time":8,"image":"frames/19-friends.webp"},{"id":"together","titleRu":"Вместе","titleJa":"一緒に","text":"Зайчик помог сложить стены, медвежонок укрепил крышу, а лисичка украсила домик красивыми листьями и цветами.","index":20,"time":11,"image":"frames/20-together.webp"},{"id":"done","titleRu":"Домик готов","titleJa":"完成","text":"Вскоре домик был готов. Лисичка с радостью посмотрела на свою работу.\n— Как хорошо, что мы сделали это вместе! — сказала она.","index":21,"time":11,"image":"frames/21-done.webp"},{"id":"night","titleRu":"И с тех пор…","titleJa":"おわり","text":"И с тех пор лисичка больше не думала, что она хуже других, если что-то не получается с первого раза. Она продолжала учиться новому, радовалась своим успехам и не стеснялась просить о помощи.","index":22,"time":11,"image":"frames/22-night.webp"}]</script>
+<script>
+(function () {
+  'use strict';
+  const slides = JSON.parse(document.getElementById('story-data').textContent);
+  const frame = document.getElementById('frame');
+  const chapters = document.getElementById('chapters');
+  const count = document.getElementById('count');
+  const back = document.getElementById('prev');
+  const next = document.getElementById('next');
+  const voice = document.getElementById('voice');
+  const audio = new Audio();
+  audio.preload = 'none';
+  let current = -1;
+  slides.forEach(function (s, i) {
+    const option = document.createElement('option');
+    option.value = String(i);
+    option.textContent = String(i+1) + '. ' + s.titleRu;
+    chapters.appendChild(option);
+  });
+  function stopVoice() { audio.pause(); audio.removeAttribute('src'); audio.load(); voice.textContent = '▶ Озвучка'; }
+  function show(i) {
+    i = Math.max(0, Math.min(slides.length - 1, i));
+    if (i !== current) stopVoice();
+    current = i;
+    const slide = slides[i];
+    frame.src = slide.image;
+    frame.alt = slide.titleRu + ' — иллюстрация ' + String(i+1) + ' из ' + String(slides.length);
+    document.getElementById('ru').textContent = slide.titleRu;
+    document.getElementById('jp').textContent = slide.titleJa;
+    document.getElementById('body').textContent = slide.text;
+    count.textContent = String(i+1) + ' / ' + String(slides.length);
+    chapters.value = String(i);
+    back.disabled = i === 0;
+    next.disabled = i === slides.length - 1;
+    document.getElementById('classic-link').href = '../classic/#' + String(i+1);
+    document.getElementById('disney-link').href = '../disney/#' + String(i+1);
+    document.title = 'Аки Хана · ' + slide.titleRu;
+    if (location.hash !== '#' + String(i+1)) history.replaceState(null, '', '#' + String(i+1));
+  }
+  frame.addEventListener('error', function () { frame.alt = 'Не удалось открыть кадр. Проверьте наличие папки frames.'; });
+  back.addEventListener('click', function () { show(current-1); });
+  next.addEventListener('click', function () { show(current+1); });
+  chapters.addEventListener('change', function () { show(Number(chapters.value)); });
+  window.addEventListener('hashchange', function () { show(Number(location.hash.slice(1)) - 1 || 0); });
+  window.addEventListener('keydown', function (event) {
+    if (event.altKey || event.ctrlKey || event.metaKey || /^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName)) return;
+    if (event.key === 'ArrowRight') { event.preventDefault(); show(current+1); }
+    if (event.key === 'ArrowLeft') { event.preventDefault(); show(current-1); }
+  });
+  voice.addEventListener('click', async function () {
+    if (!audio.paused) { stopVoice(); return; }
+    audio.src = '../../voice/' + String(current).padStart(2, '0') + '.mp3';
+    try { await audio.play(); voice.textContent = '■ Остановить'; }
+    catch (err) { voice.textContent = 'Озвучка недоступна'; }
+  });
+  audio.addEventListener('ended', function () { voice.textContent = '▶ Озвучка'; });
+  show(Number(location.hash.slice(1)) - 1 || 0);
+}());
+</script>
+</body>
+</html>
